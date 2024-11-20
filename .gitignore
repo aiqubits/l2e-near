@@ -1,0 +1,6 @@
+src/contract/target
+src/contracts/**/target/
+src/contracts/**/Cargo.lock
+src/frontend/node_modules
+src/frontend/dist
+src/frontend/.next
