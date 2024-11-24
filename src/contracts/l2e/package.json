@@ -1,0 +1,22 @@
+{
+    "name": "collections",
+    "version": "1.0.0",
+    "license": "(MIT AND Apache-2.0)",
+    "type": "module",
+    "scripts": {
+      "build": "RUSTFLAGS='-C link-arg=-s' cargo build --target wasm32-unknown-unknown --release",
+      "test": "$npm_execpath run build && ava -- ./target/wasm32-unknown-unknown/release/l2e_top_near.wasm"
+    },
+    "dependencies": {
+      "near-sdk-js": "2.0.0"
+    },
+    "devDependencies": {
+      "ava": "^6.1.3",
+      "near-workspaces": "4.0.0",
+      "typescript": "^5.4.5"
+    },
+    "ava": {
+      "files": ["tests/*.ava.js"],
+      "timeout": "25s"
+    }
+  }

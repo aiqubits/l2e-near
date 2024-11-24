@@ -13,6 +13,27 @@ export default function HelloNear() {
 
   const [greeting, setGreeting] = useState('loading...');
   const [newGreeting, setNewGreeting] = useState('loading...');
+
+  const [allSpenderClaim, setAllSpenderClaim] = useState('loading...');
+
+  const [approvedForSpenderResult, setApproveForSpenderResult] = useState('loading...');
+  const [approvedForSpender, setApproveForSpender] = useState({
+    spenderid: '',
+    mainamount: '',
+    ftamount: '',
+    tokenmetadata: '',
+    ftid: '',
+    nftid: '',
+  });
+  const approveForSpenderChange = (e) => {
+    e.preventDefault(); //禁用默认值
+    const { name, value } = e.target;
+    setApproveForSpender((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
   const [loggedIn, setLoggedIn] = useState(false);
   const [showSpinner, setShowSpinner] = useState(false);
 
@@ -25,6 +46,14 @@ export default function HelloNear() {
   }, [wallet]);
 
   useEffect(() => {
+    if (!wallet) return;
+
+    wallet.viewMethod({ contractId: CONTRACT, method: 'get_all_spender_claim_for_owner' }).then(
+      allSpenderClaim => setAllSpenderClaim(allSpenderClaim)
+    );
+  }, [wallet]);
+
+  useEffect(() => {
     setLoggedIn(!!signedAccountId);
   }, [signedAccountId]);
 
@@ -33,6 +62,24 @@ export default function HelloNear() {
     await wallet.callMethod({ contractId: CONTRACT, method: 'set_greeting', args: { greeting: newGreeting } });
     const greeting = await wallet.viewMethod({ contractId: CONTRACT, method: 'get_greeting' });
     setGreeting(greeting);
+    setShowSpinner(false);
+  };
+
+  const approveForSpenderSubmit = async () => {
+    setShowSpinner(true);
+    const result = await wallet.callMethod({ 
+      contractId: CONTRACT, 
+      method: 'approve_for_spender', 
+      args: { 
+        spender: approvedForSpender.spenderid, 
+        main_token_amount: approvedForSpender.mainamount, 
+        ft_token_amount: approvedForSpender.ftamount, 
+        token_metadata: approvedForSpender.tokenmetadata, 
+        ft_token_id: approvedForSpender.ftid, 
+        nft_token_id: approvedForSpender.nftid 
+      } 
+    });
+    setApproveForSpenderResult(result);
     setShowSpinner(false);
   };
 
@@ -49,99 +96,107 @@ export default function HelloNear() {
 
         <div className="m-4">
           <h1 className="w-100">
-            Get greeting: <code>{greeting}</code>
+            All Spenders Claim List:
           </h1>
-          <div className="input-group" hidden={!loggedIn}>
-            <input
-              type="text"
-              className="form-control w-20"
-              placeholder="Set greeting"
-              onChange={t => setNewGreeting(t.target.value)}
-            />
-            <div className="input-group-append">
-              <button className="btn btn-secondary" onClick={saveGreeting}>
-                <span hidden={showSpinner}> Set </span>
-                <i
-                  className="spinner-border spinner-border-sm"
-                  hidden={!showSpinner}
-                ></i>
-              </button>
-            </div>
+          <div hidden={!loggedIn}>
+            <h1 className="w-100"><code>{allSpenderClaim}</code></h1>
           </div>
-        </div>
 
-
-        <div className="m-4">
-          <h1 className="w-100">
-            Get greeting: <code>{greeting}</code>
-          </h1>
-          <div className="input-group" hidden={!loggedIn}>
-            <input
-              type="text"
-              className="form-control w-20"
-              placeholder="Set greeting"
-              onChange={t => setNewGreeting(t.target.value)}
-            />
-            <div className="input-group-append">
-              <button className="btn btn-secondary" onClick={saveGreeting}>
-                <span hidden={showSpinner}> Set </span>
-                <i
-                  className="spinner-border spinner-border-sm"
-                  hidden={!showSpinner}
-                ></i>
-              </button>
-            </div>
-          </div>
-        </div>
-
-
-        <div className="m-4">
-          <h1 className="w-100">
-            Get greeting: <code>{greeting}</code>
-          </h1>
-          <div className="input-group" hidden={!loggedIn}>
-            <input
-              type="text"
-              className="form-control w-20"
-              placeholder="Set greeting"
-              onChange={t => setNewGreeting(t.target.value)}
-            />
-            <div className="input-group-append">
-              <button className="btn btn-secondary" onClick={saveGreeting}>
-                <span hidden={showSpinner}> Set </span>
-                <i
-                  className="spinner-border spinner-border-sm"
-                  hidden={!showSpinner}
-                ></i>
-              </button>
-            </div>
-          </div>
         </div>
 
         <div className="m-4">
           <h1 className="w-100">
-            Get greeting: <code>{greeting}</code>
+            Approve For Spender Response:
           </h1>
+          <div hidden={!loggedIn}>
+            <h1 className="w-100"><code>{approvedForSpenderResult}</code></h1>
+          </div>
           <div className="input-group" hidden={!loggedIn}>
-            <input
-              type="text"
-              className="form-control w-20"
-              placeholder="Set greeting"
-              onChange={t => setNewGreeting(t.target.value)}
-            />
-            <div className="input-group-append">
-              <button className="btn btn-secondary" onClick={saveGreeting}>
-                <span hidden={showSpinner}> Set </span>
-                <i
-                  className="spinner-border spinner-border-sm"
-                  hidden={!showSpinner}
-                ></i>
-              </button>
-            </div>
+            <form onSubmit={approveForSpenderSubmit}>
+              <div>
+                <input
+                  type="text"
+                  id="spenderid"
+                  name="spenderid"
+                  className="form-control w-20"
+                  placeholder="Spender Account ID"
+                  onChange={approveForSpenderChange}
+                  required
+                />
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  id="mainamount"
+                  name="mainamount"
+                  className="form-control w-20"
+                  placeholder="Main Token Amount"
+                  onChange={approveForSpenderChange}
+                  required
+                />
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  id="ftamount"
+                  name="ftamount"
+                  className="form-control w-20"
+                  placeholder="FT Amount"
+                  onChange={approveForSpenderChange}
+                  required
+                />
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  id="tokenmetadata"
+                  name="tokenmetadata"
+                  className="form-control w-20"
+                  placeholder="Main Token Amount"
+                  onChange={approveForSpenderChange}
+                />
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  id="ftid"
+                  name="ftid"
+                  className="form-control w-20"
+                  placeholder="FT Address"
+                  onChange={approveForSpenderChange}
+                />
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  id="nftid"
+                  name="nftid"
+                  className="form-control w-20"
+                  placeholder="NFT Address"
+                  onChange={approveForSpenderChange}
+                />
+              </div>
+
+              <div className="input-group-append">
+                <button className="btn btn-secondary" type="submit">
+                  <span hidden={showSpinner}> Approve For Spender </span>
+                  <i
+                    className="spinner-border spinner-border-sm"
+                    hidden={!showSpinner}
+                  ></i>
+                </button>
+              </div>
+            </form>
+
           </div>
         </div>
 
-        <br/>  
+        <br />
 
         <div className="m-4">
           <h1 className="w-100">

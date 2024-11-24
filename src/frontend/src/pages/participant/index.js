@@ -13,6 +13,38 @@ export default function HelloNear() {
 
   const [greeting, setGreeting] = useState('loading...');
   const [newGreeting, setNewGreeting] = useState('loading...');
+
+  const [allRewards, setAllRewards] = useState('loading...');
+  const [allowances, setallowances] = useState('loading...');
+  const [transferNftFromResult, setTransferNftFromResult] = useState('loading...');
+  const [transferNftFrom, setTransferNftFrom] = useState({
+    ownerid: '',
+    nftid: '',
+  });
+  const [transferFtFromResult, setTransferFtFromResult] = useState('loading...');
+  const [transferFtFrom, setTransferFtFrom] = useState({
+    ownerid: '',
+    ftid: '',
+  });
+
+  const transferNftFromChange = (e) => {
+    e.preventDefault(); //禁用默认值
+    const { name, value } = e.target;
+    setTransferNftFrom((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
+  const transferBalancesFromChange = (e) => {
+    e.preventDefault(); //禁用默认值
+    const { name, value } = e.target;
+    setTransferFtFrom((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
   const [loggedIn, setLoggedIn] = useState(false);
   const [showSpinner, setShowSpinner] = useState(false);
 
@@ -25,6 +57,22 @@ export default function HelloNear() {
   }, [wallet]);
 
   useEffect(() => {
+    if (!wallet) return;
+
+    wallet.viewMethod({ contractId: CONTRACT, method: 'all_owner_rewards_for_spender' }).then(
+      allRewards => setAllRewards(allRewards)
+    );
+  }, [wallet]);
+
+  useEffect(() => {
+    if (!wallet) return;
+
+    wallet.viewMethod({ contractId: CONTRACT, method: 'get_allowances_for_spender' }).then(
+      allowances => setallowances(allowances)
+    );
+  }, [wallet]);
+
+  useEffect(() => {
     setLoggedIn(!!signedAccountId);
   }, [signedAccountId]);
 
@@ -33,6 +81,24 @@ export default function HelloNear() {
     await wallet.callMethod({ contractId: CONTRACT, method: 'set_greeting', args: { greeting: newGreeting } });
     const greeting = await wallet.viewMethod({ contractId: CONTRACT, method: 'get_greeting' });
     setGreeting(greeting);
+    setShowSpinner(false);
+  };
+
+  const transferNftFromSubmit = async (e) => {
+    setShowSpinner(true);
+    e.preventDefault(); //禁用默认值
+    // todo 验证逻辑
+    const result = await wallet.callMethod({ contractId: CONTRACT, method: 'transfer_nft_from', args: { owner: transferNftFrom.ownerid, erc721_address: transferNftFrom.nftid } });
+    setTransferNftFromResult(result)
+    setShowSpinner(false);
+  };
+
+  const transferFtFromSubmit = async (e) => {
+    setShowSpinner(true);
+    e.preventDefault(); //禁用默认值
+    // todo 验证逻辑
+    const result = await wallet.callMethod({ contractId: CONTRACT, method: 'transfer_balances_from', args: { owner: transferFtFrom.ownerid, erc20_address: transferFtFrom.ftid } });
+    setTransferFtFromResult(result)
     setShowSpinner(false);
   };
 
@@ -49,33 +115,40 @@ export default function HelloNear() {
 
         <div className="m-4">
           <h1 className="w-100">
-            Get greeting: <code>{greeting}</code>
+            All Rewards List:
           </h1>
-          <div className="input-group" hidden={!loggedIn}>
-            <input
-              type="text"
-              className="form-control w-20"
-              placeholder="Set greeting"
-              onChange={t => setNewGreeting(t.target.value)}
-            />
-            <div className="input-group-append">
-              <button className="btn btn-secondary" onClick={saveGreeting}>
-                <span hidden={showSpinner}> Set </span>
-                <i
-                  className="spinner-border spinner-border-sm"
-                  hidden={!showSpinner}
-                ></i>
-              </button>
-            </div>
+          <div hidden={!loggedIn}>
+            <h1 className="w-100"><code>{allRewards}</code></h1>
+            {/* <div className="input-group" >
+              <input
+                type="text"
+                className="form-control w-20"
+                placeholder="Set greeting"
+                onChange={t => setNewGreeting(t.target.value)}
+              />
+              <div className="input-group-append">
+                <button className="btn btn-secondary" onClick={saveGreeting}>
+                  <span hidden={showSpinner}> Set </span>
+                  <i
+                    className="spinner-border spinner-border-sm"
+                    hidden={!showSpinner}
+                  ></i>
+                </button>
+              </div>
+            </div> */}
+
           </div>
         </div>
 
 
         <div className="m-4">
           <h1 className="w-100">
-            Get greeting: <code>{greeting}</code>
+            Allowances List:
           </h1>
-          <div className="input-group" hidden={!loggedIn}>
+          <div hidden={!loggedIn}>
+            <h1 className="w-100"><code>{allowances}</code></h1>
+
+            {/* <div className="input-group" hidden={!loggedIn}>
             <input
               type="text"
               className="form-control w-20"
@@ -91,57 +164,98 @@ export default function HelloNear() {
                 ></i>
               </button>
             </div>
+          </div> */}
+
           </div>
         </div>
 
 
         <div className="m-4">
-          <h1 className="w-100">
-            Get greeting: <code>{greeting}</code>
+          <h1 className="w-100" >
+           Claim NFT Response:
           </h1>
+          <div hidden={!loggedIn}>
+            <h1 className="w-100"><code>{transferNftFromResult}</code></h1>
+          </div>
           <div className="input-group" hidden={!loggedIn}>
-            <input
-              type="text"
-              className="form-control w-20"
-              placeholder="Set greeting"
-              onChange={t => setNewGreeting(t.target.value)}
-            />
+          <form onSubmit={transferNftFromSubmit}>
+            <div>
+              <input
+                type="text"
+                id="ownerid"
+                name="ownerid"
+                className="form-control w-20"
+                placeholder="Owner Account Address"
+                onChange={transferNftFromChange}
+                required
+              />
+            </div>
+
+            <div>
+              <input
+                type="text"
+                id="nftid"
+                name="nftid"
+                className="form-control w-20"
+                placeholder="NFT Address"
+                onChange={transferNftFromChange}
+              />
+            </div>
+
             <div className="input-group-append">
-              <button className="btn btn-secondary" onClick={saveGreeting}>
-                <span hidden={showSpinner}> Set </span>
+              <button className="btn btn-secondary" type="submit">
+                <span hidden={showSpinner}> Claim NFT </span>
                 <i
                   className="spinner-border spinner-border-sm"
                   hidden={!showSpinner}
                 ></i>
               </button>
             </div>
+            </form>
+
           </div>
         </div>
 
         <div className="m-4">
           <h1 className="w-100">
-            Get greeting: <code>{greeting}</code>
+            Claim Token Response:
           </h1>
+          <div hidden={!loggedIn}>
+            <h1 className="w-100"><code>{transferFtFromResult}</code></h1>
+          </div>
           <div className="input-group" hidden={!loggedIn}>
+          <form onSubmit={transferFtFromSubmit}>
             <input
               type="text"
+              id="ownerid"
+              name="ownerid"
               className="form-control w-20"
-              placeholder="Set greeting"
-              onChange={t => setNewGreeting(t.target.value)}
+              placeholder="Owner Account Address"
+              onChange={transferBalancesFromChange}
+              required
+            />
+            <input
+              type="text"
+              id="ftid"
+              name="ftid"
+              className="form-control w-20"
+              placeholder="FT Address"
+              onChange={transferBalancesFromChange}
             />
             <div className="input-group-append">
-              <button className="btn btn-secondary" onClick={saveGreeting}>
-                <span hidden={showSpinner}> Set </span>
+              <button className="btn btn-secondary" type="submit">
+                <span hidden={showSpinner}> Claim Token </span>
                 <i
                   className="spinner-border spinner-border-sm"
                   hidden={!showSpinner}
                 ></i>
               </button>
             </div>
+            </form>
           </div>
         </div>
 
-        <br/>  
+        <br />
 
         <div className="m-4">
           <h1 className="w-100">

@@ -7,6 +7,7 @@ cargo-near-new-project-description
 Install [`cargo-near`](https://github.com/near/cargo-near) and run:
 
 ```bash
+RUSTFLAGS="-C link-arg=-s" rustup run stable cargo build --target wasm32-unknown-unknown --release
 cargo near build
 ```
 

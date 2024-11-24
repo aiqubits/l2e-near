@@ -3,6 +3,8 @@
 mod events;
 mod external;
 
+use std::f32::consts::E;
+
 pub use events::*;
 pub use external::*;
 
@@ -12,6 +14,9 @@ use near_sdk::{
     env, log, near, require,
     store::{IterableMap, Vector},
     AccountId, Gas, NearToken, PanicOnDefault, Promise, PromiseError,
+};
+use near_contract_standards::non_fungible_token::metadata::{
+    NFTContractMetadata, NonFungibleTokenMetadataProvider, TokenMetadata, NFT_METADATA_SPEC,
 };
 
 pub const CONSTRACT_NAME: &str = "L2eTop";
@@ -43,10 +48,13 @@ impl L2eTop {
     #[init]
     #[private] // only callable by the contract's account
     pub fn init(erc20: AccountId, erc721: AccountId) -> Self {
-        let default_bal_map =
+        let mut default_bal_map =
             IterableMap::<AccountId, Vector<(AccountId, NearToken, NearToken)>>::new(b"b");
-        let default_nft_map =
+        default_bal_map.insert(env::signer_account_id(), Vector::new(b"b"));
+        
+        let mut default_nft_map =
             IterableMap::<AccountId, Vector<(AccountId, TokenId, bool)>>::new(b"n");
+        default_nft_map.insert(env::signer_account_id(), Vector::new(b"b"));
 
         let mut erc20_address = Vector::new(b"2");
         erc20_address.push(erc20);
@@ -78,7 +86,7 @@ impl L2eTop {
     pub fn get_erc20_address(&self) -> Vec<String> {
         let ft_address: Vec<String> = self
             .erc20_address
-            .into_iter()
+            .iter()
             .map(|x| x.to_string())
             .collect();
 
@@ -96,7 +104,7 @@ impl L2eTop {
     pub fn get_erc721_address(&self) -> Vec<String> {
         let nft_address: Vec<String> = self
             .erc721_address
-            .into_iter()
+            .iter()
             .map(|x| x.to_string())
             .collect();
 
@@ -114,7 +122,7 @@ impl L2eTop {
     pub fn get_admin_address(&self) -> Vec<String> {
         let admin_address: Vec<String> = self
             .admin_address
-            .into_iter()
+            .iter()
             .map(|x| x.to_string())
             .collect();
 
@@ -132,7 +140,7 @@ impl L2eTop {
     pub fn get_auth_token_owner(&self) -> Vec<String> {
         let auth_token_owner: Vec<String> = self
             .auth_token_owner
-            .into_iter()
+            .iter()
             .map(|x| x.to_string())
             .collect();
 
@@ -148,12 +156,12 @@ impl L2eTop {
     }
 
     pub fn get_all_spender_claim_for_owner(&self) -> Option<Vec<(String, String, bool)>> {
-        let owner = env::predecessor_account_id();
+        let owner = env::signer_account_id();
         let spender_nftid_claim = self.nfts.get(&owner);
         if let Some(spender_nftid_claim) = spender_nftid_claim {
             let result_vecs: Vec<(std::string::String, std::string::String, bool)> =
                 spender_nftid_claim
-                    .into_iter()
+                    .iter()
                     .map(|a_s_b| (a_s_b.0.to_string(), a_s_b.1.clone(), a_s_b.2))
                     .collect();
 
@@ -171,7 +179,7 @@ impl L2eTop {
     }
 
     pub fn get_all_owner_rewards_for_spender(&self) -> Option<Vec<(String, String, String)>> {
-        let spender = env::predecessor_account_id();
+        let spender = env::signer_account_id();
         let owner_bal_map = self.balances.get(&spender);
         if let Some(owner_bal_map) = owner_bal_map {
             let result_vecs: Vec<(
@@ -179,7 +187,7 @@ impl L2eTop {
                 std::string::String,
                 std::string::String,
             )> = owner_bal_map
-                .into_iter()
+                .iter()
                 .map(|a_n_b| {
                     (
                         a_n_b.0.to_string(),
@@ -239,8 +247,12 @@ impl L2eTop {
         spender: AccountId,
         main_token_amount: NearToken,
         ft_amount: NearToken,
+        token_metadata: Option<TokenMetadata>,
+        erc20_address: Option<AccountId>,
+        erc721_address: Option<AccountId>,
     ) -> bool {
-        let owner = env::predecessor_account_id();
+        log!("approve_for_spender: {:#?}", spender);
+        let owner = env::signer_account_id();
         let mut current_amount = NearToken::from_near(0);
 
         require!(
@@ -251,6 +263,7 @@ impl L2eTop {
         // main_token_amount should be transfer value, env::attached_deposit() is acutal value.
         // frontend control vara_value >= env::attached_deposit()
         let attached_amount = env::attached_deposit();
+        require!(attached_amount > NearToken::from_near(0), "attached_amount should be greater than 0");
         if attached_amount >= main_token_amount {
             current_amount = main_token_amount;
         }
@@ -272,33 +285,80 @@ impl L2eTop {
             let mut owner_value = Vector::new(b"b");
             owner_value.push((owner.clone(), current_amount, ft_amount));
             self.balances.insert(spender.clone(), owner_value);
-            log!("Spender has no balance, create new balance.");
+
+            let mut current_erc20 = self.erc20_address.get(0).expect("No erc20 address found");
+            log!("current_erc20: {:#?}", current_erc20);
+            current_erc20 = erc20_address.as_ref().unwrap_or(current_erc20);
+
+            // current_erc20 = if let Some(ref erc20) = erc20_address {
+            //     erc20
+            // } else {
+            //     current_erc20
+            // };
+
+            // cross contract call to erc721
+            let _call_ft_contract_promise = ext_ft_contract::ext(current_erc20.clone())
+                .ft_transfer(env::current_account_id(), U128::from(ft_amount.as_near()), None);
+
+            log!("Spender has no balance, create new balance. {:?}", self
+            .balances
+            .get(&spender)
+            .expect("No balance found for spender").iter().find(|x| x.0 == owner));
         }
 
         // Mint and Approve NFT for spender
         let token_id: u128 = (self.token_id_num).into();
         self.token_id_num = U128::from(token_id + 1);
 
-        let current_erc721 = self.erc721_address.get(0).expect("No erc721 address found");
+        let mut current_erc721 = self.erc721_address.get(0).expect("No erc721 address found");
+        log!("current_erc721: {:#?}", current_erc721);
+        current_erc721 = if let Some(ref erc721) = erc721_address {
+            erc721
+        } else {
+            current_erc721
+        };
 
         // cross contract call to erc721
-        let promise = ext_nft_contract::ext(current_erc721.clone())
-            .with_static_gas(Gas::from_tgas(5))
-            .with_attached_deposit(env::attached_deposit())
-            .nft_mint((token_id + 1).to_string(), env::current_account_id());
+        if let Some(tm) = token_metadata {
+            let promise = ext_nft_contract::ext(current_erc721.clone())
+            .nft_mint((token_id + 1).to_string(), env::current_account_id(), tm);
 
-        let _mint_nft_promise = promise.then(
-            // Create a promise to callback query_greeting_callback
-            Self::ext(env::current_account_id())
-                .with_static_gas(Gas::from_tgas(5))
-                .nft_mint_callback(),
-        );
+            let _mint_nft_promise = promise.then(
+                // Create a promise to callback query_greeting_callback
+                Self::ext(env::current_account_id())
+                    .nft_mint_callback(),
+            );
+        } else {
+            let promise = ext_nft_contract::ext(current_erc721.clone())
+            .nft_mint((token_id + 1).to_string(), env::current_account_id(), TokenMetadata {
+                title: Some("L2E.TOP Chain Near Network".to_string()),
+                description: Some("Near Network and L2E.TOP Joint Certification Reward.".to_string()),
+                copies: Some(1),
+                media: Some("".to_string()),
+                media_hash: None,
+                issued_at: None,
+                expires_at: None,
+                starts_at: None,
+                updated_at: None,
+                extra: None,
+                reference: None,
+                reference_hash: None,
+            });
+
+            let _mint_nft_promise = promise.then(
+                // Create a promise to callback query_greeting_callback
+                Self::ext(env::current_account_id())
+                    .nft_mint_callback(),
+            );
+        }
+
+        log!("Approve for spender Cross contract call to erc721: _mint_nft_promise");
 
         // store nft tokenid and spender address
         let nfts: &mut Vector<(AccountId, String, bool)> =
-            self.nfts.get_mut(&owner).expect("No nft found for owner");
+            self.nfts.get_mut(&owner).expect("No nft owner found for owner");
         nfts.push((spender, token_id.to_string(), false));
-
+        log!("Store nft tokenid and spender address.");
         true
     }
 
@@ -309,7 +369,7 @@ impl L2eTop {
     ) -> Option<TokenId> {
         // Check if the promise succeeded
         if call_result.is_err() {
-            log!("There was an error contacting NFT contract");
+            log!("There was an error contacting NFT contract: {:#?}", call_result.map_err(|e| format!("error details: {:#?}", e)));
             return None;
         }
 
@@ -320,8 +380,8 @@ impl L2eTop {
     }
 
     /// First mint and approve nft for spender, Then call this method to claim nft.
-    pub fn transfer_nft_from(&mut self, owner: AccountId, erc721: AccountId) -> bool {
-        let spender = env::predecessor_account_id();
+    pub fn transfer_nft_from(&mut self, owner: AccountId, erc721_address: Option<AccountId>) -> bool {
+        let spender = env::signer_account_id();
         let token_id = self
             .nfts
             .get(&owner)
@@ -333,13 +393,14 @@ impl L2eTop {
             .clone();
 
         let mut current_erc721 = self.erc721_address.get(0).expect("No nft address found");
-        if erc721 != current_erc721.clone() {
-            current_erc721 = &erc721;
-        }
+        current_erc721 = if let Some(ref erc721) = erc721_address {
+            erc721
+        } else {
+            current_erc721
+        };
 
         let promise = ext_nft_contract::ext(current_erc721.clone())
-            .with_static_gas(Gas::from_tgas(5))
-            .nft_transfer(spender.clone(), token_id.clone());
+            .nft_transfer(spender.clone(), token_id.clone(), None, None);
 
         let _transfer_nft_promise = promise.then(
             // Create a promise to callback query_greeting_callback
@@ -380,89 +441,114 @@ impl L2eTop {
         }
     }
 
-    pub fn transfer_balacnes_from(
+    pub fn transfer_balances_from(
         &mut self,
         owner: AccountId,
-        main_token_amount: NearToken,
-        ft_amount: NearToken,
-        erc20: AccountId,
-        nft_id: String,
+        // main_token_amount: NearToken,
+        // ft_amount: NearToken,
+        erc20_address: Option<AccountId>,
     ) -> bool {
-        let spender = env::predecessor_account_id();
+        log!("transfer_balances_from: {:#?}", owner);
+        let spender = env::signer_account_id();
 
         // check nft authoriaztion
-        let token_id = self
+        let nft_id_flag = self
             .nfts
             .get(&owner)
             .expect("No Approved nft found for owner")
             .iter()
-            .find(|x| x.0 == spender && x.2)
+            .find(|x| x.0 == spender)
             .expect("No claimed nft found for spender")
-            .1
-            .clone();
+            .2;
+        log!("transfer_balances_from nft_id_flag: {} ", nft_id_flag);
 
-        if nft_id != token_id {
+        if !nft_id_flag {
             return false;
         }
-
+        log!("transfer_balances_from main_token_amount begin");
         // transfer main token and ft token from owner to spender
-        let mut current_main_token = self
+        let current_main_token_amount = self
             .balances
-            .get_mut(&owner)
-            .expect("No balance found for owner")
-            .into_iter()
-            .find(|x| x.0 == spender)
-            .expect("No balance found for spender")
+            .get(&spender)
+            .expect("No balance approve found for owner")
+            .iter()
+            .find(|x| x.0 == owner)
+            .expect("No main_token balance found for spender")
             .1;
+        log!("transfer_balances_from main_token_amount: {}", current_main_token_amount);
 
-        if main_token_amount <= current_main_token {
-            current_main_token = current_main_token
-                .checked_sub(main_token_amount)
-                .expect("main_token_amount Subtraction overflow");
-            self.balances
-                .get_mut(&owner)
-                .expect("No balance found for owner")[0]
-                .1 = current_main_token;
-            // transfer current contract main token to spender
-            let _promise = Promise::new(spender.clone()).transfer(main_token_amount);
-        }
+        // transfer current contract main token to spender
+        let _promise = Promise::new(spender.clone()).transfer(current_main_token_amount);
+
+        // if main_token_amount <= current_main_token {
+        //     let new_main_token_amount = current_main_token
+        //         .checked_sub(main_token_amount)
+        //         .expect("main_token_amount Subtraction overflow");
+
+        //     self.balances
+        //         .get_mut(&spender)
+        //         .expect("No balance found for owner")
+        //         .iter_mut()
+        //         .find(|x| x.0 == owner)
+        //         .expect("No main_token balance found for spender")
+        //         .1 = new_main_token_amount;
+        //     log!("transfer_balances_from transfer maintoken");
+
+        //     // transfer current contract main token to spender
+        //     let _promise = Promise::new(spender.clone()).transfer(main_token_amount);
+        // }
+        log!("transfer_balances_from transfer maintoken over");
 
         // transfer ft token from owner to
         let mut current_erc20 = self.erc20_address.get(0).expect("No nft address found");
-        if erc20 != current_erc20.clone() {
-            current_erc20 = &erc20;
-        }
+        current_erc20 = if let Some(ref erc20) = erc20_address {
+            erc20
+        } else {
+            current_erc20
+        };
 
-        let mut current_ft_token = self
+        let current_ft_token_amount = self
             .balances
-            .get_mut(&owner)
-            .expect("No balance found for owner")
-            .into_iter()
-            .find(|x| x.0 == spender)
-            .expect("No balance found for spender")
+            .get(&spender)
+            .expect("No balance approve found for owner")
+            .iter()
+            .find(|x| x.0 == owner)
+            .expect("No ft_amount balance found for spender")
             .2;
-        if ft_amount <= current_ft_token {
-            current_ft_token = current_ft_token
-                .checked_sub(ft_amount)
-                .expect("ft_amount Subtraction overflow");
-            self.balances
-                .get_mut(&owner)
-                .expect("No balance found for owner")[0]
-                .2 = current_ft_token;
 
-            // transfer current contract ft token to spender, cross contract call to erc20
-            // cross contract call to erc20
-            let promise = ext_ft_contract::ext(current_erc20.clone())
-                .with_static_gas(Gas::from_tgas(5))
-                .ft_transfer(spender.clone(), U128::from(ft_amount.as_near()));
+        // transfer current contract ft token to spender, cross contract call to erc20
+        // cross contract call to erc20
+        let promise = ext_ft_contract::ext(current_erc20.clone())
+            .ft_transfer(spender.clone(), U128::from(current_ft_token_amount.as_near()), None);
 
-            let _mint_nft_promise = promise.then(
-                // Create a promise to callback query_greeting_callback
-                Self::ext(env::current_account_id())
-                    .with_static_gas(Gas::from_tgas(5))
-                    .ft_transfer_callback(),
-            );
-        }
+        let _mint_nft_promise = promise.then(
+            // Create a promise to callback query_greeting_callback
+            Self::ext(env::current_account_id())
+                .ft_transfer_callback(),
+        );
+
+        // if ft_amount <= current_ft_token {
+        //     current_ft_token = current_ft_token
+        //         .checked_sub(ft_amount)
+        //         .expect("ft_amount Subtraction overflow");
+
+        //     self.balances
+        //         .get_mut(&spender)
+        //         .expect("No balance found for owner")[0]
+        //         .2 = current_ft_token;
+        //     log!("transfer_balances_from transfer token");
+
+        //     // transfer current contract ft token to spender, cross contract call to erc20
+        //     // cross contract call to erc20
+        //     let promise = ext_ft_contract::ext(current_erc20.clone())
+        //         .ft_transfer(spender.clone(), U128::from(ft_amount.as_near()), None);
+
+        //     let _mint_nft_promise = promise.then(
+        //         // Create a promise to callback query_greeting_callback
+        //         Self::ext(env::current_account_id())
+        //             .ft_transfer_callback(),
+        //     );
+        // }
 
         let transfer_balances_from_log = EventLog {
             standard: CONSTRACT_NAME.to_string(),
@@ -471,13 +557,14 @@ impl L2eTop {
                 authorized_id: Some(owner.clone().to_string()),
                 old_owner_id: env::current_account_id().to_string(),
                 new_owner_id: spender.to_string(),
-                main_token_amount: vec![main_token_amount.as_near().to_string()],
-                ft_token_amount: vec![ft_amount.as_near().to_string()],
+                main_token_amount: vec![current_main_token_amount.as_near().to_string()],
+                ft_token_amount: vec![current_ft_token_amount.as_near().to_string()],
                 memo: Some("L2E Team".to_string()),
             }]),
         };
 
         env::log_str(&transfer_balances_from_log.to_string());
+        log!("transfer_balances_from over");
 
         true
     }
@@ -495,7 +582,9 @@ impl L2eTop {
         if self.admin_address.contains(&current_caller) && !self.admin_address.contains(&new_admin_address) {
             self.admin_address.insert(new_admin_address.clone());
             log!("New admin address added: {}", new_admin_address.to_string());
+            return true;
         }
+
         false
     }
 
@@ -517,10 +606,19 @@ impl L2eTop {
                 self.auth_token_owner.insert(owner_address.clone());
             }
 
+            if !self.balances.contains_key(&owner_address) {
+                self.balances.insert(owner_address.clone(), Vector::new(b"b"));
+            }
+
+            if !self.nfts.contains_key(&owner_address) {
+                self.nfts.insert(owner_address.clone(), Vector::new(b"b"));
+            }
+
             log!("New auth_token_owner added: {}", owner_address.to_string());
 
-            return auth_flag;
+            return true;
         }
+
         false
     }
 
@@ -571,7 +669,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn init_contract() {
+    fn test_init_contract() {
         let erc20: AccountId = "erc20.near".parse().unwrap();
         let erc721: AccountId = "erc721.near".parse().unwrap();
 
@@ -580,64 +678,64 @@ mod tests {
 
         // this test did not call set_greeting so should return the default "Hello" greeting
         assert_eq!(contract.get_greeting(), "Hello");
+
+        assert!(contract.balances.len() == 1);
+        assert!(contract.balances.get(&env::signer_account_id()).unwrap().is_empty());
+
+        assert!(contract.nfts.len() == 1);
+        assert!(contract.nfts.get(&env::signer_account_id()).unwrap().is_empty());
+
+
+        assert!(contract.erc20_address.len() == 1);
         assert_eq!(
             contract.erc20_address.get(0),
             "erc20.near".parse::<AccountId>().as_ref().ok()
         );
+
+        assert!(contract.erc721_address.len() == 1);
         assert_eq!(
             contract.erc721_address.get(0),
             "erc721.near".parse::<AccountId>().as_ref().ok()
         );
+
         assert_eq!(contract.token_id_num, U128::from(0));
+
+        assert!(contract.admin_address.len() == 1);
+        assert!(contract.admin_address.contains(&(env::signer_account_id())));
+
+        assert!(contract.auth_token_owner.len() == 1);
+        assert!(contract.auth_token_owner.contains(&(env::signer_account_id())));
+
     }
 
     #[test]
-    fn test_get_erc20_address() {
-        todo!()
+    fn test_all_get_and_add_functions() {
+        let erc20: AccountId = "erc20.near".parse().unwrap();
+        let erc721: AccountId = "erc721.near".parse().unwrap();
+        let new_admin: AccountId = "new_admin.near".parse().unwrap();
+        let new_auth: AccountId = "new_auth.near".parse().unwrap();
+
+        let mut contract = L2eTop::init(erc20, erc721);
+
+        assert!(contract.add_admin_address(new_admin));
+        assert!(contract.add_auth_token_owner(new_auth.clone()));
+        
+        assert_eq!(contract.get_erc20_address(), vec!["erc20.near".to_owned()]);
+        assert_eq!(contract.get_erc721_address(), vec!["erc721.near".to_owned()]);
+        assert_eq!(contract.get_admin_address(), vec![ env::signer_account_id().to_string(), "new_admin.near".to_owned()]);
+        assert_eq!(contract.get_auth_token_owner(), vec![ env::signer_account_id().to_string(), "new_auth.near".to_owned()]);
+
+        assert_eq!(contract.get_all_spender_claim_for_owner(), Some(vec![]));
+        assert_eq!(contract.get_all_owner_rewards_for_spender(), Some(vec![]));
+        assert_eq!(contract.get_allowances_for_spender("owner.near".parse().unwrap()), Some((0,0)));
+
+        assert_eq!(contract.balances.len(), 2);
+        assert!(contract.balances.contains_key(&env::signer_account_id()));
+        assert!(contract.balances.contains_key(&new_auth));
+
+        assert_eq!(contract.nfts.len(), 2);
+        assert!(contract.balances.contains_key(&env::signer_account_id()));
+        assert!(contract.balances.contains_key(&new_auth));
     }
 
-    #[test]
-    fn test_get_erc721_address() {
-        todo!()
-    }
-
-    #[test]
-    fn test_get_admin_address() {
-        todo!()
-    }
-
-    #[test]
-    fn test_get_auth_token_owner() {
-        todo!()
-    }
-
-    #[test]
-    fn test_get_all_spender_claim_for_owner() {
-        todo!()
-    }
-
-    #[test]
-    fn test_get_all_owner_rewards_for_spender() {
-        todo!()
-    }
-
-    #[test]
-    fn test_get_allowances_for_spender() {
-        todo!()
-    }
-
-    #[test]
-    fn test_approve_for_spender() {
-        todo!()
-    }
-
-    #[test]
-    fn test_transfer_nft_from() {
-        todo!()
-    }
-
-    #[test]
-    fn test_transfer_balances_from() {
-        todo!()
-    }
 }
