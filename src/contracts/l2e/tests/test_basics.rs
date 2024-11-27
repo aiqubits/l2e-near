@@ -76,7 +76,8 @@ async fn test_basics_on(contract_wasm: &[u8]) -> Result<(), Box<dyn std::error::
         nft_contract.id().clone(),
     )
     .await?;
-    // test_transfer_nft_from();
+    test_transfer_nft_from(&contract, &contract.as_account(), &nft_contract.as_account()).await?;
+    test_transfer_balances_from(&contract, &contract.as_account(), &ft_contract.as_account()).await?;
 
     Ok(())
 }
@@ -240,11 +241,11 @@ async fn test_approve_for_spender(
     erc20: AccountId,
     erc721: AccountId,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    log!("Test Approve For Spender: start");
+    log!("Test Approve For Spender: start change from_yoctonear 1");
     let user_message_outcome = contract
         .as_account()
         .call(contract.id(), "approve_for_spender")
-        .deposit(NearToken::from_near(10))
+        .deposit(NearToken::from_yoctonear(1))
         .args_json(json!({
             "spender": spender.id(), 
             "main_token_amount": main_token_amount, 
@@ -304,20 +305,14 @@ async fn test_transfer_nft_from(
 async fn test_transfer_balances_from(
     contract: &Contract,
     owner: &Account,
-    main_token_amount: NearToken,
-    ft_amount: NearToken,
     erc20: &Account,
-    nft_id: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let user_message_outcome = contract
         .as_account()
         .call(contract.id(), "transfer_balances_from")
         .args_json(json!({
             "owner": owner.id(), 
-            "main_token_amount": main_token_amount,
-            "ft_amount": ft_amount,
             "erc20": erc20.id(),
-            "nft_id": nft_id,
         }))
         .transact()
         .await?;

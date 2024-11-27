@@ -13,7 +13,7 @@ use near_sdk::store::IterableSet;
 use near_sdk::{
     env, log, near, require,
     store::{IterableMap, Vector},
-    AccountId, Gas, NearToken, PanicOnDefault, Promise, PromiseError,
+    AccountId, Gas, NearToken, PanicOnDefault, Promise, PromiseError, PromiseOrValue,
 };
 use near_contract_standards::non_fungible_token::metadata::{
     NFTContractMetadata, NonFungibleTokenMetadataProvider, TokenMetadata, NFT_METADATA_SPEC,
@@ -50,11 +50,11 @@ impl L2eTop {
     pub fn init(erc20: AccountId, erc721: AccountId) -> Self {
         let mut default_bal_map =
             IterableMap::<AccountId, Vector<(AccountId, NearToken, NearToken)>>::new(b"b");
-        default_bal_map.insert(env::signer_account_id(), Vector::new(b"b"));
+        default_bal_map.insert(env::signer_account_id(), Vector::new(b"v"));
         
         let mut default_nft_map =
             IterableMap::<AccountId, Vector<(AccountId, TokenId, bool)>>::new(b"n");
-        default_nft_map.insert(env::signer_account_id(), Vector::new(b"b"));
+        default_nft_map.insert(env::signer_account_id(), Vector::new(b"i"));
 
         let mut erc20_address = Vector::new(b"2");
         erc20_address.push(erc20);
@@ -250,7 +250,7 @@ impl L2eTop {
         token_metadata: Option<TokenMetadata>,
         erc20_address: Option<AccountId>,
         erc721_address: Option<AccountId>,
-    ) -> bool {
+    ) -> PromiseOrValue<bool> {
         log!("approve_for_spender: {:#?}", spender);
         let owner = env::signer_account_id();
         let mut current_amount = NearToken::from_near(0);
@@ -277,7 +277,7 @@ impl L2eTop {
                 .expect("No balance found for spender");
             if owner_value.iter().find(|x| x.0 == owner).is_some() {
                 log!("Spender has already approved balance.");
-                return false;
+                return PromiseOrValue::Value(false);
             }
 
             owner_value.push((owner.clone(), current_amount, ft_amount));
@@ -296,7 +296,7 @@ impl L2eTop {
             //     current_erc20
             // };
 
-            // cross contract call to erc721
+            // cross contract call to erc20
             let _call_ft_contract_promise = ext_ft_contract::ext(current_erc20.clone())
                 .ft_transfer(env::current_account_id(), U128::from(ft_amount.as_near()), None);
 
@@ -319,7 +319,7 @@ impl L2eTop {
         };
 
         // cross contract call to erc721
-        if let Some(tm) = token_metadata {
+        let pro = if let Some(tm) = token_metadata {
             let promise = ext_nft_contract::ext(current_erc721.clone())
             .nft_mint((token_id + 1).to_string(), env::current_account_id(), tm);
 
@@ -328,6 +328,7 @@ impl L2eTop {
                 Self::ext(env::current_account_id())
                     .nft_mint_callback(),
             );
+            _mint_nft_promise
         } else {
             let promise = ext_nft_contract::ext(current_erc721.clone())
             .nft_mint((token_id + 1).to_string(), env::current_account_id(), TokenMetadata {
@@ -350,16 +351,15 @@ impl L2eTop {
                 Self::ext(env::current_account_id())
                     .nft_mint_callback(),
             );
-        }
-
-        log!("Approve for spender Cross contract call to erc721: _mint_nft_promise");
+            _mint_nft_promise
+        };
 
         // store nft tokenid and spender address
         let nfts: &mut Vector<(AccountId, String, bool)> =
             self.nfts.get_mut(&owner).expect("No nft owner found for owner");
         nfts.push((spender, token_id.to_string(), false));
         log!("Store nft tokenid and spender address.");
-        true
+        PromiseOrValue::Promise(pro)
     }
 
     #[private] // Public - but only callable by env::current_account_id()
@@ -369,7 +369,7 @@ impl L2eTop {
     ) -> Option<TokenId> {
         // Check if the promise succeeded
         if call_result.is_err() {
-            log!("There was an error contacting NFT contract: {:#?}", call_result.map_err(|e| format!("error details: {:#?}", e)));
+            log!("There was an error contacting NFT contract nft_mint: {:#?}", call_result.map_err(|e| format!("error details: {:#?}", e)));
             return None;
         }
 
@@ -437,15 +437,13 @@ impl L2eTop {
     pub fn nft_transfer_callback(&self, #[callback_result] call_result: Result<(), PromiseError>) {
         // Check if the promise succeeded
         if call_result.is_err() {
-            log!("There was an error contacting NFT contract");
+            log!("There was an error contacting NFT contract nft_transfer: {:#?}", call_result.map_err(|e| format!("error details: {:#?}", e)));
         }
     }
 
     pub fn transfer_balances_from(
         &mut self,
         owner: AccountId,
-        // main_token_amount: NearToken,
-        // ft_amount: NearToken,
         erc20_address: Option<AccountId>,
     ) -> bool {
         log!("transfer_balances_from: {:#?}", owner);
@@ -467,15 +465,28 @@ impl L2eTop {
         }
         log!("transfer_balances_from main_token_amount begin");
         // transfer main token and ft token from owner to spender
+        for (k, v) in self.balances.iter(){
+            log!("transfer_balances_from k: {:#?}", k);
+            log!("transfer_balances_from v: {:#?}", v);
+            for arr_v_tuple in v.iter(){
+                log!("transfer_balances_from arr_v_tuple: {:#?}", arr_v_tuple.0);
+                log!("transfer_balances_from arr_v_tuple: {:#?}", arr_v_tuple.1);
+                log!("transfer_balances_from arr_v_tuple: {:#?}", arr_v_tuple.2);
+            }
+        }
+        log!("transfer_balances_from spender: {:#?}", spender);
+        for v in self.balances.get(&spender).expect("read vector fail").iter(){
+            log!("transfer_balances_from v: {:#?}", v);
+        }
         let current_main_token_amount = self
             .balances
             .get(&spender)
-            .expect("No balance approve found for owner")
+            .expect("No balance approve found for spender")
             .iter()
             .find(|x| x.0 == owner)
             .expect("No main_token balance found for spender")
             .1;
-        log!("transfer_balances_from main_token_amount: {}", current_main_token_amount);
+        log!("transfer_balances_from main_token_amount over");
 
         // transfer current contract main token to spender
         let _promise = Promise::new(spender.clone()).transfer(current_main_token_amount);
@@ -520,7 +531,7 @@ impl L2eTop {
         // cross contract call to erc20
         let promise = ext_ft_contract::ext(current_erc20.clone())
             .ft_transfer(spender.clone(), U128::from(current_ft_token_amount.as_near()), None);
-
+        
         let _mint_nft_promise = promise.then(
             // Create a promise to callback query_greeting_callback
             Self::ext(env::current_account_id())
@@ -573,7 +584,7 @@ impl L2eTop {
     pub fn ft_transfer_callback(&self, #[callback_result] call_result: Result<(), PromiseError>) {
         // Check if the promise succeeded
         if call_result.is_err() {
-            log!("There was an error contacting external contract");
+            log!("There was an error contacting FT contract ft_transfer: {:#?}", call_result.map_err(|e| format!("error details: {:#?}", e)));
         }
     }
 
