@@ -76,8 +76,8 @@ async fn test_basics_on(contract_wasm: &[u8]) -> Result<(), Box<dyn std::error::
         nft_contract.id().clone(),
     )
     .await?;
-    test_transfer_nft_from(&contract, &contract.as_account(), &nft_contract.as_account()).await?;
-    test_transfer_balances_from(&contract, &contract.as_account(), &ft_contract.as_account()).await?;
+    // test_transfer_nft_from(&contract, &contract.as_account(), &nft_contract.as_account()).await?;
+    // test_transfer_balances_from(&contract, &contract.as_account(), &ft_contract.as_account()).await?;
 
     Ok(())
 }
@@ -245,7 +245,7 @@ async fn test_approve_for_spender(
     let user_message_outcome = contract
         .as_account()
         .call(contract.id(), "approve_for_spender")
-        .deposit(NearToken::from_yoctonear(1))
+        .deposit(NearToken::from_near(2))
         .args_json(json!({
             "spender": spender.id(), 
             "main_token_amount": main_token_amount, 

@@ -12,7 +12,7 @@ pub const XCC_SUCCESS: u64 = 1;
 // Validator interface, for cross-contract calls
 #[ext_contract(ext_nft_contract)]
 trait ERC721Contract {
-    fn nft_mint(&self, token_series_id: TokenId, receiver_id: AccountId, token_metadata: TokenMetadata,) -> Promise;
+    fn nft_mint(&self, token_id: TokenId, token_owner_id: AccountId, token_metadata: TokenMetadata,) -> Promise;
     fn nft_transfer(&self, receiver_id: AccountId, token_id: TokenId, approval_id: Option<u64>, memo: Option<String>,) -> Promise;
     fn nft_token(&self, token_id: TokenId) -> Promise;
 
@@ -20,5 +20,7 @@ trait ERC721Contract {
 
 #[ext_contract(ext_ft_contract)]
 trait ERC20Contract {
+    fn storage_balance_of(&self, account_id: AccountId) -> Promise;
+    fn storage_deposit(&mut self, account_id: Option<AccountId>, registration_only: Option<bool>) -> Promise;
     fn ft_transfer(&self, receiver_id: AccountId, amount: U128, memo: Option<String>) -> Promise;
 }
