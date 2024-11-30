@@ -116,30 +116,51 @@ test('test_approve_transfer_nft_balances_for_spender', async (t) => {
 
   // test approve_for_spender
   const approve_for_spender_result = await l2e_account
-      .callRaw(l2e_account, 'approve_for_spender', {
+    .callRaw(l2e_account, 'approve_for_spender', {
       spender: user_account.accountId,
       main_token_amount: NEAR.parse("1 N").toString(),
       ft_amount: NEAR.parse("100 N").toString(),
-    }, { attachedDeposit: NEAR.parse("2 N").toString() });
-    console.log("consolelog1-------------------");
-    console.log(JSON.stringify(approve_for_spender_result));
-    // const returnValue = approve_for_spender_result.parseResult();
-    // console.log("consolelog2-------------------");
-    // console.log(JSON.stringify(returnValue));
+      token_metadata: {
+        "title": "L2E.TOP Chain Near Network",
+        "description": "Near Network and L2E.TOP Joint Certification Reward.",
+        "copies": 1,
+        "media": "",
+      },
+      erc20: ft_account.accountId,
+      erc721: nft_account.accountId,
+    }, { gas: "300000000000000", attachedDeposit: NEAR.parse("5 N").toString() });
+  console.log("consolelog1-------------------");
+  console.log(JSON.stringify(approve_for_spender_result));
+  // const returnValue = approve_for_spender_result.parseResult();
+  // console.log("consolelog2-------------------");
+  // console.log(JSON.stringify(returnValue));
   // t.deepEqual(approve_for_spender_result, true);
-  // console.log("test_approve_for_spender end");
-  // // test transfer_nft_from
-  // const transfer_nft_from_result = await user_account.callRaw(l2e_account, 'transfer_nft_from', { owner: l2e_account.accountId, erc721: nft_account.accountId });
+  console.log("test_approve_for_spender end");
+  // test transfer_nft_from
+  const transfer_nft_from_result = await user_account
+    .callRaw(l2e_account, 'transfer_nft_from', { 
+      owner: l2e_account.accountId, 
+      erc721: nft_account.accountId 
+    }, { gas: "300000000000000", attachedDeposit: NEAR.parse("1 nN").toString() });
+
+  console.log("check nft metadata");
+  const nft_metadata = await nft_account.view('nft_token', { token_id: '1001' });
+  console.log(JSON.stringify(nft_metadata));
   // t.deepEqual(transfer_nft_from_result, true);
-  // console.log("test_transfer_nft_from end");
-  // // test transfer_balances_from
-  // const transfer_balances_from_result = await user_account.callRaw(
-  //   l2e_account,
-  //   'transfer_balances_from',
-  //   {
-  //     owner: l2e_account.accountId,
-  //     erc20: ft_account.accountId,
-  //   });
+  console.log("consolelog2-------------------");
+  console.log(JSON.stringify(transfer_nft_from_result));
+  // t.deepEqual(transfer_nft_from_result, true);
+  console.log("test_transfer_nft_from end");
+  // test transfer_balances_from
+  const transfer_balances_from_result = await user_account.callRaw(
+    l2e_account,
+    'transfer_balances_from',
+    {
+      owner: l2e_account.accountId,
+      erc20: ft_account.accountId,
+    }, { gas: "300000000000000", attachedDeposit: NEAR.parse("1 nN").toString() });
+  console.log("consolelog3-------------------");
+  console.log(JSON.stringify(transfer_balances_from_result));
   // t.deepEqual(transfer_balances_from_result, true);
-  // console.log("test_transfer_balances_from end");
+  console.log("test_transfer_balances_from end");
 });
