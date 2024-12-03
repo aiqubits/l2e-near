@@ -76,7 +76,7 @@ async fn test_basics_on(contract_wasm: &[u8]) -> Result<(), Box<dyn std::error::
         nft_contract.id().clone(),
     )
     .await?;
-    // test_transfer_nft_from(&contract, &contract.as_account(), &nft_contract.as_account()).await?;
+    test_transfer_nft_from(&contract, &user_account,&contract.as_account(), &nft_contract.as_account()).await?;
     // test_transfer_balances_from(&contract, &contract.as_account(), &ft_contract.as_account()).await?;
 
     Ok(())
@@ -241,7 +241,6 @@ async fn test_approve_for_spender(
     erc20: AccountId,
     erc721: AccountId,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    log!("Test Approve For Spender: start change from_yoctonear 1");
     let user_message_outcome = contract
         .as_account()
         .call(contract.id(), "approve_for_spender")
@@ -267,13 +266,10 @@ async fn test_approve_for_spender(
             "erc20": erc20,
             "erc721": erc721,
         }))
+        .max_gas()
         .transact()
         .await?;
 
-    log!(
-        "Test Approve For Spender: {:#?}",
-        user_message_outcome.failures()
-    );
     assert!(user_message_outcome.is_success());
 
     log!("Test Approve For Spender: OK");
@@ -282,16 +278,17 @@ async fn test_approve_for_spender(
 
 async fn test_transfer_nft_from(
     contract: &Contract,
+    spender: &Account,
     owner: &Account,
     erc721: &Account,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let user_message_outcome = contract
-        .as_account()
+    let user_message_outcome = spender
         .call(contract.id(), "transfer_nft_from")
         .args_json(json!({
             "owner": owner.id(), 
             "erc721": erc721.id()
         }))
+        .max_gas()
         .transact()
         .await?;
 
@@ -314,6 +311,7 @@ async fn test_transfer_balances_from(
             "owner": owner.id(), 
             "erc20": erc20.id(),
         }))
+        .max_gas()
         .transact()
         .await?;
 
