@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState, useContext } from 'react';
 
 import { NearContext } from '@/wallets/near';
-import NearLogo from '/public/near.svg';
+import L2eLogo from '/public/l2e.png';
 
 import styles from '@/styles/app.module.css';
 import { useTheme } from 'next-themes';
@@ -38,11 +38,11 @@ export const Navigation = () => {
     <nav className="navbar navbar-expand-lg">
       <div className="container-fluid">
       <Link href="/" rel="noopener noreferrer">
-          <Image priority src={NearLogo} alt="NEAR" width="90" height="72" className="d-inline-block align-text-top" />
+          <Image priority src={L2eLogo} alt="NEAR" width="200" height="72" className="d-inline-block align-text-top" />
       </Link>
       </div>
 
-      <div className="container-fluid">
+      {/* <div className="container-fluid">
       <Link
         href="/hello-near"
         className={styles.card}
@@ -52,7 +52,7 @@ export const Navigation = () => {
           Greeting
         </h3>
       </Link>
-      </div>
+      </div> */}
 
       <div className="container-fluid">
       <Link

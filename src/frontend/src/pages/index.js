@@ -1,6 +1,6 @@
 import Image from 'next/image';
 
-import NearLogo from '/public/near.svg';
+import L2eLogo from '/public/l2eq.png';
 import NextLogo from '/public/next.svg';
 import styles from '@/styles/app.module.css';
 import { Cards } from '@/components/cards';
@@ -13,13 +13,13 @@ export default function Home() {
       <div className={styles.center}>
         <Image
           className={styles.logo}
-          src={NearLogo}
-          alt="NEAR Logo"
-          width={110 * 1.5}
-          height={28 * 1.5}
+          src={L2eLogo}
+          alt="L2e Logo"
+          width={360}
+          height={360}
           priority
         />
-        <h3 className="ms-2 me-3 text-dark"> + </h3>
+        {/* <h3 className="ms-2 me-3 text-dark"> + </h3>
         <Image
           className={styles.logo}
           src={NextLogo}
@@ -27,7 +27,7 @@ export default function Home() {
           width={300 * .58}
           height={61 * .58}
           priority
-        />
+        /> */}
       </div>
 
       <div className={styles.grid}>

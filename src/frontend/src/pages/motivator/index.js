@@ -14,9 +14,9 @@ export default function HelloNear() {
   const [greeting, setGreeting] = useState('loading...');
   const [newGreeting, setNewGreeting] = useState('loading...');
 
-  const [allSpenderClaim, setAllSpenderClaim] = useState('loading...');
+  const [allSpenderClaim, setAllSpenderClaim] = useState('waiting for query...');
 
-  const [approvedForSpenderResult, setApproveForSpenderResult] = useState('loading...');
+  const [approvedForSpenderResult, setApproveForSpenderResult] = useState('loading operation...');
   const [approvedForSpender, setApproveForSpender] = useState({
     spenderid: '',
     mainamount: '',
@@ -45,13 +45,11 @@ export default function HelloNear() {
     );
   }, [wallet]);
 
-  useEffect(() => {
-    if (!wallet) return;
-
-    wallet.viewMethod({ contractId: CONTRACT, method: 'get_all_spender_claim_for_owner' }).then(
-      allSpenderClaim => setAllSpenderClaim(allSpenderClaim)
-    );
-  }, [wallet]);
+  // 不使用useEffect，而使用手动点击按钮查询的方式
+  const searchForMe = async () => {
+    const all_spender_result = await wallet.callMethod({ contractId: CONTRACT, method: 'get_all_spender_claim_for_owner', args: {} });
+    setAllSpenderClaim(all_spender_result);
+  };
 
   useEffect(() => {
     setLoggedIn(!!signedAccountId);
@@ -100,6 +98,15 @@ export default function HelloNear() {
           </h1>
           <div hidden={!loggedIn}>
             <h1 className="w-100"><code>{allSpenderClaim}</code></h1>
+            <div className="input-group-append">
+                <button className="btn btn-secondary" onClick={searchForMe}>
+                  <span hidden={showSpinner}> Search For Me </span>
+                  <i
+                    className="spinner-border spinner-border-sm"
+                    hidden={!showSpinner}
+                  ></i>
+                </button>
+            </div>
           </div>
 
         </div>
@@ -198,7 +205,7 @@ export default function HelloNear() {
 
         <br />
 
-        <div className="m-4">
+        {/* <div className="m-4">
           <h1 className="w-100">
             Get greeting: <code>{greeting}</code>
           </h1>
@@ -219,11 +226,11 @@ export default function HelloNear() {
               </button>
             </div>
           </div>
-        </div>
+        </div> */}
 
 
         <div className="w-100 text-end align-text-center" hidden={loggedIn}>
-          <p className="m-0"> Please login to change the state </p>
+          <p className="m-0"> Please login to operate </p>
         </div>
 
       </div>

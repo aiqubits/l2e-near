@@ -14,7 +14,10 @@ cargo near build
 ## How to Test Locally?
 
 ```bash
-cargo test
+# Run Rust tests
+cargo test --package l2e-top-near --lib --test test_basics -- --show-output
+# Run js tests
+npm run test
 ```
 
 ## How to Deploy?
@@ -23,8 +26,21 @@ Deployment is automated with GitHub Actions CI/CD pipeline.
 To deploy manually, install [`cargo-near`](https://github.com/near/cargo-near) and run:
 
 ```bash
-cargo near deploy <account-id>
+near login
+# Set testnetwork.testnet
+# Set ft-l2e.testnet
+# Set nft-l2e.testnet
+near deploy testnetwork.testnet ./target/wasm32-unknown-unknown/release/l2e_top_near.wasm
+near deploy ft-l2e.testnet ./tests/fungible_token.wasm
+near deploy nft-l2e.testnet ./tests/non_fungible_token.wasm
 ```
+
+## Initalizing the Contract
+
+https://testnet.nearblocks.io/zh-cn/address/ft-l2e.testnet?tab=contract   new_default_meta  Write
+https://testnet.nearblocks.io/zh-cn/address/nft-l2e.testnet?tab=contract  new_default_meta  Write
+
+https://testnet.nearblocks.io/zh-cn/address/testnetwork.testnet?tab=contract init Write
 
 ## Useful Links
 

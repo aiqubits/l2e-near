@@ -50,11 +50,11 @@ impl L2eTop {
     pub fn init(erc20: AccountId, erc721: AccountId) -> Self {
         let mut default_bal_map =
             IterableMap::<AccountId, Vector<(AccountId, NearToken, NearToken)>>::new(b"b");
-        default_bal_map.insert(env::signer_account_id(), Vector::new(b"v"));
+        default_bal_map.insert(env::predecessor_account_id(), Vector::new(b"v"));
         
         let mut default_nft_map =
             IterableMap::<AccountId, Vector<(AccountId, TokenId, bool)>>::new(b"n");
-        default_nft_map.insert(env::signer_account_id(), Vector::new(b"i"));
+        default_nft_map.insert(env::predecessor_account_id(), Vector::new(b"i"));
 
         let mut erc20_address = Vector::new(b"2");
         erc20_address.push(erc20);
@@ -62,12 +62,12 @@ impl L2eTop {
         let mut erc721_address = Vector::new(b"7");
         erc721_address.push(erc721);
 
-        let token_id_num = U128::from(100000);
+        let token_id_num = U128::from(10000);
         let mut admin_address = IterableSet::new(b"a");
-        admin_address.insert(env::signer_account_id());
+        admin_address.insert(env::predecessor_account_id());
 
         let mut auth_token_owner = IterableSet::new(b"t");
-        auth_token_owner.insert(env::signer_account_id());
+        auth_token_owner.insert(env::predecessor_account_id());
 
         Self {
             greeting: "Hello".to_string(),
@@ -156,7 +156,7 @@ impl L2eTop {
     }
 
     pub fn get_all_spender_claim_for_owner(&self) -> Option<Vec<(String, String, bool)>> {
-        let owner = env::signer_account_id();
+        let owner = env::predecessor_account_id();
         let spender_nftid_claim = self.nfts.get(&owner);
         if let Some(spender_nftid_claim) = spender_nftid_claim {
             let result_vecs: Vec<(std::string::String, std::string::String, bool)> =
@@ -179,7 +179,7 @@ impl L2eTop {
     }
 
     pub fn get_all_owner_rewards_for_spender(&self) -> Option<Vec<(String, String, String)>> {
-        let spender = env::signer_account_id();
+        let spender = env::predecessor_account_id();
         let owner_bal_map = self.balances.get(&spender);
         if let Some(owner_bal_map) = owner_bal_map {
             let result_vecs: Vec<(
@@ -252,7 +252,7 @@ impl L2eTop {
         erc721_address: Option<AccountId>,  // erc721 address's owner must be l2e-top contract.
     ) -> bool {
         let l2e_account = env::current_account_id();
-        let owner = env::signer_account_id();
+        let owner = env::predecessor_account_id();
         let mut current_amount = NearToken::from_near(0);
 
         require!(
@@ -461,26 +461,26 @@ impl L2eTop {
         } else {
             current_erc721
         };
-        let nft_token_promise = ext_nft_core::ext(current_erc721.clone())
-            .with_attached_deposit(NearToken::from_yoctonear(1))
-            .nft_token(token_id.clone());
+        // let nft_token_promise = ext_nft_core::ext(current_erc721.clone())
+        //     .with_attached_deposit(NearToken::from_yoctonear(1))
+        //     .nft_token(token_id.clone());
 
-        let _nft_token_callback_promise = nft_token_promise.then(
-            // Create a promise to callback query_greeting_callback
-            Self::ext(env::current_account_id())
-                .nft_token_callback(),
-        );
+        // let _nft_token_callback_promise = nft_token_promise.then(
+        //     // Create a promise to callback query_greeting_callback
+        //     Self::ext(env::current_account_id())
+        //         .nft_token_callback(),
+        // );
 
-        // approve nft for spender
-        let nft_approve_promise = ext_nft_approval::ext(current_erc721.clone())
-            // .with_attached_deposit(NearToken::from_yoctonear(1))
-            .with_attached_deposit(NearToken::from_millinear(200))
-            .nft_approve(token_id.clone(), spender.clone(), None,);
+        // // approve nft for spender
+        // let nft_approve_promise = ext_nft_approval::ext(current_erc721.clone())
+        //     // .with_attached_deposit(NearToken::from_yoctonear(1))
+        //     .with_attached_deposit(NearToken::from_millinear(200))
+        //     .nft_approve(token_id.clone(), spender.clone(), None,);
 
-        let _nft_approve_callback_promise = nft_approve_promise.then(
-            Self::ext(env::current_account_id())
-                .nft_approve_callback(),
-        );
+        // let _nft_approve_callback_promise = nft_approve_promise.then(
+        //     Self::ext(env::current_account_id())
+        //         .nft_approve_callback(),
+        // );
 
         let nft_token_promise = ext_nft_core::ext(current_erc721.clone())
             .with_attached_deposit(NearToken::from_yoctonear(1))
@@ -558,7 +558,7 @@ impl L2eTop {
         erc20_address: Option<AccountId>,
     ) -> bool {
         log!("transfer_balances_from: {:#?}", owner);
-        let spender = env::signer_account_id();
+        let spender = env::predecessor_account_id();
 
         // check nft authoriaztion
         let nft_id_flag = self
@@ -758,10 +758,10 @@ mod tests {
         assert_eq!(contract.get_greeting(), "Hello");
 
         assert!(contract.balances.len() == 1);
-        assert!(contract.balances.get(&env::signer_account_id()).unwrap().is_empty());
+        assert!(contract.balances.get(&env::predecessor_account_id()).unwrap().is_empty());
 
         assert!(contract.nfts.len() == 1);
-        assert!(contract.nfts.get(&env::signer_account_id()).unwrap().is_empty());
+        assert!(contract.nfts.get(&env::predecessor_account_id()).unwrap().is_empty());
 
 
         assert!(contract.erc20_address.len() == 1);
@@ -776,13 +776,13 @@ mod tests {
             "erc721.near".parse::<AccountId>().as_ref().ok()
         );
 
-        assert_eq!(contract.token_id_num, U128::from(0));
+        assert_eq!(contract.token_id_num, U128::from(10000));
 
         assert!(contract.admin_address.len() == 1);
-        assert!(contract.admin_address.contains(&(env::signer_account_id())));
+        assert!(contract.admin_address.contains(&(env::predecessor_account_id())));
 
         assert!(contract.auth_token_owner.len() == 1);
-        assert!(contract.auth_token_owner.contains(&(env::signer_account_id())));
+        assert!(contract.auth_token_owner.contains(&(env::predecessor_account_id())));
 
     }
 
@@ -800,19 +800,19 @@ mod tests {
         
         assert_eq!(contract.get_erc20_address(), vec!["erc20.near".to_owned()]);
         assert_eq!(contract.get_erc721_address(), vec!["erc721.near".to_owned()]);
-        assert_eq!(contract.get_admin_address(), vec![ env::signer_account_id().to_string(), "new_admin.near".to_owned()]);
-        assert_eq!(contract.get_auth_token_owner(), vec![ env::signer_account_id().to_string(), "new_auth.near".to_owned()]);
+        assert_eq!(contract.get_admin_address(), vec![ env::predecessor_account_id().to_string(), "new_admin.near".to_owned()]);
+        assert_eq!(contract.get_auth_token_owner(), vec![ env::predecessor_account_id().to_string(), "new_auth.near".to_owned()]);
 
         assert_eq!(contract.get_all_spender_claim_for_owner(), Some(vec![]));
         assert_eq!(contract.get_all_owner_rewards_for_spender(), Some(vec![]));
         assert_eq!(contract.get_allowances_for_spender("owner.near".parse().unwrap()), Some((0,0)));
 
         assert_eq!(contract.balances.len(), 2);
-        assert!(contract.balances.contains_key(&env::signer_account_id()));
+        assert!(contract.balances.contains_key(&env::predecessor_account_id()));
         assert!(contract.balances.contains_key(&new_auth));
 
         assert_eq!(contract.nfts.len(), 2);
-        assert!(contract.balances.contains_key(&env::signer_account_id()));
+        assert!(contract.balances.contains_key(&env::predecessor_account_id()));
         assert!(contract.balances.contains_key(&new_auth));
     }
 

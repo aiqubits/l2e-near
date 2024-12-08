@@ -1,11 +1,9 @@
 // rustc 1.80版本下的测试，与nft ft rust 1.70版不匹配
 
-use near_sdk::{env, json_types::U128, log, store::vec, AccountId};
+use near_sdk::{json_types::U128, log, AccountId};
 use near_workspaces::{types::NearToken, Account, Contract};
 use serde_json::json;
-use near_contract_standards::non_fungible_token::metadata::{
-    NFTContractMetadata, NonFungibleTokenMetadataProvider, TokenMetadata, NFT_METADATA_SPEC,
-};
+use near_contract_standards::non_fungible_token::metadata::TokenMetadata;
 
 #[tokio::test]
 async fn test_contract_is_operational() -> Result<(), Box<dyn std::error::Error>> {
@@ -18,9 +16,11 @@ async fn test_contract_is_operational() -> Result<(), Box<dyn std::error::Error>
 async fn test_basics_on(contract_wasm: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     let sandbox = near_workspaces::sandbox().await?;
 
+    // load contracts
     let ft_contract_wasm = std::fs::read("./tests/fungible_token.wasm")?;
     let nft_contract_wasm = std::fs::read("./tests/non_fungible_token.wasm")?;
 
+    // deploy contracts
     let ft_contract = sandbox.dev_deploy(&ft_contract_wasm).await?;
     let nft_contract = sandbox.dev_deploy(&nft_contract_wasm).await?;
     let contract = sandbox.dev_deploy(contract_wasm).await?;
@@ -28,7 +28,7 @@ async fn test_basics_on(contract_wasm: &[u8]) -> Result<(), Box<dyn std::error::
     let contract_account = contract.id();
     let user_account = sandbox.dev_create_account().await?;
 
-    // init contract
+    // init contracts
     let ft_init_outcome = ft_contract
         .call("new_default_meta")
         .args_json(serde_json::json!({
@@ -37,7 +37,8 @@ async fn test_basics_on(contract_wasm: &[u8]) -> Result<(), Box<dyn std::error::
         }))
         .transact()
         .await?;
-    log!("FT Init Outcome: {:#?}", ft_init_outcome);
+    // log!("FT Init Outcome: {:#?}", ft_init_outcome);
+    assert!(ft_init_outcome.is_success());
 
     let nft_init_outcome = nft_contract
         .call("new_default_meta")
@@ -47,8 +48,7 @@ async fn test_basics_on(contract_wasm: &[u8]) -> Result<(), Box<dyn std::error::
         .transact()
         .await?;
 
-    log!("NFT Init Outcome: {:#?}", nft_init_outcome);
-
+    // log!("NFT Init Outcome: {:#?}", nft_init_outcome);
     assert!(nft_init_outcome.is_success());
 
     let init_outcome = contract
@@ -56,7 +56,7 @@ async fn test_basics_on(contract_wasm: &[u8]) -> Result<(), Box<dyn std::error::
         .args_json(json!({"erc20": ft_contract.id(),"erc721": nft_contract.id()}))
         .transact()
         .await?;
-    log!("L2E Init Outcome: {:#?}", init_outcome);
+    // log!("L2E Init Outcome: {:#?}", init_outcome);
     assert!(init_outcome.is_success());
 
     test_greeting_on(&user_account, &contract).await?;
@@ -76,8 +76,8 @@ async fn test_basics_on(contract_wasm: &[u8]) -> Result<(), Box<dyn std::error::
         nft_contract.id().clone(),
     )
     .await?;
-    test_transfer_nft_from(&contract, &user_account,&contract.as_account(), &nft_contract.as_account()).await?;
-    // test_transfer_balances_from(&contract, &contract.as_account(), &ft_contract.as_account()).await?;
+    test_transfer_nft_from(&contract, &user_account, &contract.as_account(), &nft_contract.as_account()).await?;
+    test_transfer_balances_from(&contract, &user_account, &contract.as_account(), &ft_contract.as_account()).await?;
 
     Ok(())
 }
@@ -292,7 +292,7 @@ async fn test_transfer_nft_from(
         .transact()
         .await?;
 
-    log!("Test Transfer Nft From Spender: {:#?}", user_message_outcome.failures());
+    // log!("Test Transfer Nft From Spender: {:#?}", user_message_outcome);
     assert!(user_message_outcome.is_success());
 
     log!("Test Transfer Nft From: OK");
@@ -301,11 +301,11 @@ async fn test_transfer_nft_from(
 
 async fn test_transfer_balances_from(
     contract: &Contract,
+    spender: &Account,
     owner: &Account,
     erc20: &Account,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let user_message_outcome = contract
-        .as_account()
+    let user_message_outcome = spender
         .call(contract.id(), "transfer_balances_from")
         .args_json(json!({
             "owner": owner.id(), 
@@ -315,7 +315,7 @@ async fn test_transfer_balances_from(
         .transact()
         .await?;
 
-    log!("Test Transfer Balances From Spender: {:#?}", user_message_outcome.failures());
+    // log!("Test Transfer Balances From Spender: {:#?}", user_message_outcome);
     assert!(user_message_outcome.is_success());
 
     log!("Test Transfer Balances From: OK");

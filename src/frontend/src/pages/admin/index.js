@@ -14,9 +14,9 @@ export default function HelloNear() {
   const [greeting, setGreeting] = useState('loading...');
   const [newGreeting, setNewGreeting] = useState('loading...');
 
-  const [ftAddress, setFtAddress] = useState('loading...');
-  const [nftAddress, setNftAddress] = useState('loading...');
-  const [contractAddressResult, setContractAddressResult] = useState('loading...');
+  const [ftAddress, setFtAddress] = useState('waiting for query...');
+  const [nftAddress, setNftAddress] = useState('waiting for query...');
+  const [contractAddressResult, setContractAddressResult] = useState('loading operation...');
   const [contractAddress, setContractAddress] = useState({
     ftid: '',
     nftid: '',
@@ -31,11 +31,11 @@ export default function HelloNear() {
     }));
   };
 
-  const [authTokenOwnerAddress, setGetAuthTokenOwnerAddress] = useState('loading...');
-  const [newAuthTokenOwnerAddress, setNewAuthTokenOwnerAddress] = useState('loading...');
+  const [authTokenOwnerAddress, setGetAuthTokenOwnerAddress] = useState('loading operation...');
+  const [newAuthTokenOwnerAddress, setNewAuthTokenOwnerAddress] = useState('loading operation...');
 
-  const [adminAddress, setAdminAddress] = useState('loading...');
-  const [newAdminAddress, setNewAdminAddress] = useState('loading...');
+  const [adminAddress, setAdminAddress] = useState('loading operation...');
+  const [newAdminAddress, setNewAdminAddress] = useState('loading operation...');
 
 
   const [loggedIn, setLoggedIn] = useState(false);
@@ -230,7 +230,7 @@ export default function HelloNear() {
 
         </div>
 
-        <div className="m-4">
+        {/* <div className="m-4">
           <h1 className="w-100">
             Get greeting: <code>{greeting}</code>
           </h1>
@@ -251,11 +251,11 @@ export default function HelloNear() {
               </button>
             </div>
           </div>
-        </div>
+        </div> */}
 
 
         <div className="w-100 text-end align-text-center" hidden={loggedIn}>
-          <p className="m-0"> Please login to change the state </p>
+          <p className="m-0"> Please login to operate </p>
         </div>
 
       </div>

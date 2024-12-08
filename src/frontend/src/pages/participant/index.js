@@ -11,17 +11,19 @@ const CONTRACT = HelloNearContract;
 export default function HelloNear() {
   const { signedAccountId, wallet } = useContext(NearContext);
 
-  const [greeting, setGreeting] = useState('loading...');
-  const [newGreeting, setNewGreeting] = useState('loading...');
+  const [greeting, setGreeting] = useState('loading operation...');
+  const [newGreeting, setNewGreeting] = useState('loading operation...');
 
-  const [allRewards, setAllRewards] = useState('loading...');
-  const [allowances, setallowances] = useState('loading...');
-  const [transferNftFromResult, setTransferNftFromResult] = useState('loading...');
+  const [allRewards, setAllRewards] = useState('waiting for query...');
+
+  const [ownerId, setOwnerId] = useState('waiting for query...');
+  const [allowances, setallowances] = useState('waiting for query...');
+  const [transferNftFromResult, setTransferNftFromResult] = useState('loading operation...');
   const [transferNftFrom, setTransferNftFrom] = useState({
     ownerid: '',
     nftid: '',
   });
-  const [transferFtFromResult, setTransferFtFromResult] = useState('loading...');
+  const [transferFtFromResult, setTransferFtFromResult] = useState('loading operation...');
   const [transferFtFrom, setTransferFtFrom] = useState({
     ownerid: '',
     ftid: '',
@@ -56,21 +58,31 @@ export default function HelloNear() {
     );
   }, [wallet]);
 
-  useEffect(() => {
-    if (!wallet) return;
+  const searchRewardsForMe = async () => {
+    const allRewardsResult = await wallet.callMethod({ contractId: CONTRACT, method: 'get_all_owner_rewards_for_spender', args: {} });
+    setAllRewards(allRewardsResult);
+  };
 
-    wallet.viewMethod({ contractId: CONTRACT, method: 'all_owner_rewards_for_spender' }).then(
-      allRewards => setAllRewards(allRewards)
-    );
-  }, [wallet]);
+  // useEffect(() => {
+  //   if (!wallet) return;
 
-  useEffect(() => {
-    if (!wallet) return;
+  //   wallet.viewMethod({ contractId: CONTRACT, method: 'get_all_owner_rewards_for_spender' }).then(
+  //     allRewards => setAllRewards(allRewards)
+  //   );
+  // }, [wallet]);
 
-    wallet.viewMethod({ contractId: CONTRACT, method: 'get_allowances_for_spender' }).then(
-      allowances => setallowances(allowances)
-    );
-  }, [wallet]);
+  const searchAllowancesForMe = async () => {
+    const allowancesResult = await wallet.callMethod({ contractId: CONTRACT, method: 'get_allowances_for_spender', args: { owner: ownerId} });
+    setallowances(allowancesResult);
+  };
+
+  // useEffect(() => {
+  //   if (!wallet) return;
+
+  //   wallet.viewMethod({ contractId: CONTRACT, method: 'get_allowances_for_spender' }).then(
+  //     allowances => setallowances(allowances)
+  //   );
+  // }, [wallet]);
 
   useEffect(() => {
     setLoggedIn(!!signedAccountId);
@@ -119,23 +131,17 @@ export default function HelloNear() {
           </h1>
           <div hidden={!loggedIn}>
             <h1 className="w-100"><code>{allRewards}</code></h1>
-            {/* <div className="input-group" >
-              <input
-                type="text"
-                className="form-control w-20"
-                placeholder="Set greeting"
-                onChange={t => setNewGreeting(t.target.value)}
-              />
+            <div className="input-group" >
               <div className="input-group-append">
-                <button className="btn btn-secondary" onClick={saveGreeting}>
-                  <span hidden={showSpinner}> Set </span>
+                <button className="btn btn-secondary" onClick={searchRewardsForMe}>
+                  <span hidden={showSpinner}> SearchRewardsForMe </span>
                   <i
                     className="spinner-border spinner-border-sm"
                     hidden={!showSpinner}
                   ></i>
                 </button>
               </div>
-            </div> */}
+            </div>
 
           </div>
         </div>
@@ -147,24 +153,24 @@ export default function HelloNear() {
           </h1>
           <div hidden={!loggedIn}>
             <h1 className="w-100"><code>{allowances}</code></h1>
-
-            {/* <div className="input-group" hidden={!loggedIn}>
+          <div className="input-group" hidden={!loggedIn}>
             <input
               type="text"
               className="form-control w-20"
-              placeholder="Set greeting"
-              onChange={t => setNewGreeting(t.target.value)}
+              placeholder="testnetwork.testnet"
+              onChange={t => setOwnerId(t.target.value)}
             />
-            <div className="input-group-append">
-              <button className="btn btn-secondary" onClick={saveGreeting}>
-                <span hidden={showSpinner}> Set </span>
+
+            <div className="input-group-append full-width">
+              <button className="btn btn-secondary" onClick={searchAllowancesForMe}>
+                <span hidden={showSpinner}> Search Allowances For Me </span>
                 <i
                   className="spinner-border spinner-border-sm"
                   hidden={!showSpinner}
                 ></i>
               </button>
             </div>
-          </div> */}
+          </div>
 
           </div>
         </div>
@@ -257,7 +263,7 @@ export default function HelloNear() {
 
         <br />
 
-        <div className="m-4">
+        {/* <div className="m-4">
           <h1 className="w-100">
             Get greeting: <code>{greeting}</code>
           </h1>
@@ -278,10 +284,10 @@ export default function HelloNear() {
               </button>
             </div>
           </div>
-        </div>
+        </div> */}
 
         <div className="w-100 text-end align-text-center" hidden={loggedIn}>
-          <p className="m-0"> Please login to change the state </p>
+          <p className="m-0"> Please login to operate </p>
         </div>
 
       </div>
