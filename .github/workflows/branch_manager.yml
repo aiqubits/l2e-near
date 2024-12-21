@@ -46,10 +46,10 @@ jobs:
           git add .
           git commit -m "Initial commit from ${{env.THE_FIRST_PLATFORM}}"
           git checkout -b ${{env.THE_FIRST_PLATFORM}}
-          echo git@github.com:${{ github.repository }}.git
+          echo https://github.com/${{ github.repository }}
           echo ${{ env.GITHUB_TOKEN }}
           echo ${{ secrets.GITHUB_TOKEN }}
-          git remote add origin git@github.com:${{ github.repository }}.git
+          git remote set-url origin https://github.com/${{ github.repository }}
           git push -u origin ${{env.THE_FIRST_PLATFORM}} -f
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
