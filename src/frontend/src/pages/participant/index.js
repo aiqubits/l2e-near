@@ -30,7 +30,7 @@ export default function HelloNear() {
   });
 
   const transferNftFromChange = (e) => {
-    e.preventDefault(); //禁用默认值
+    e.preventDefault(); //禁用刷新
     const { name, value } = e.target;
     setTransferNftFrom((prevData) => ({
       ...prevData,
@@ -39,7 +39,7 @@ export default function HelloNear() {
   };
 
   const transferBalancesFromChange = (e) => {
-    e.preventDefault(); //禁用默认值
+    e.preventDefault(); //禁用刷新
     const { name, value } = e.target;
     setTransferFtFrom((prevData) => ({
       ...prevData,
@@ -63,26 +63,10 @@ export default function HelloNear() {
     setAllRewards(allRewardsResult);
   };
 
-  // useEffect(() => {
-  //   if (!wallet) return;
-
-  //   wallet.viewMethod({ contractId: CONTRACT, method: 'get_all_owner_rewards_for_spender' }).then(
-  //     allRewards => setAllRewards(allRewards)
-  //   );
-  // }, [wallet]);
-
   const searchAllowancesForMe = async () => {
-    const allowancesResult = await wallet.callMethod({ contractId: CONTRACT, method: 'get_allowances_for_spender', args: { owner: ownerId} });
+    const allowancesResult = await wallet.callMethod({ contractId: CONTRACT, method: 'get_allowances_for_spender', args: { owner: ownerId } });
     setallowances(allowancesResult);
   };
-
-  // useEffect(() => {
-  //   if (!wallet) return;
-
-  //   wallet.viewMethod({ contractId: CONTRACT, method: 'get_allowances_for_spender' }).then(
-  //     allowances => setallowances(allowances)
-  //   );
-  // }, [wallet]);
 
   useEffect(() => {
     setLoggedIn(!!signedAccountId);
@@ -98,9 +82,15 @@ export default function HelloNear() {
 
   const transferNftFromSubmit = async (e) => {
     setShowSpinner(true);
-    e.preventDefault(); //禁用默认值
-    // todo 验证逻辑
-    const result = await wallet.callMethod({ contractId: CONTRACT, method: 'transfer_nft_from', args: { owner: transferNftFrom.ownerid, erc721_address: transferNftFrom.nftid } });
+    e.preventDefault(); //禁用刷新
+    // 验证逻辑
+    const argsReal = {
+      owner: transferNftFrom.ownerid,
+    }
+    if (transferNftFrom.nftid) {
+      argsReal.erc721_address = transferNftFrom.nftid;
+    }
+    const result = await wallet.callMethod({ contractId: CONTRACT, method: 'transfer_nft_from', args: argsReal });
     setTransferNftFromResult(result)
     setShowSpinner(false);
   };
@@ -108,8 +98,14 @@ export default function HelloNear() {
   const transferFtFromSubmit = async (e) => {
     setShowSpinner(true);
     e.preventDefault(); //禁用默认值
-    // todo 验证逻辑
-    const result = await wallet.callMethod({ contractId: CONTRACT, method: 'transfer_balances_from', args: { owner: transferFtFrom.ownerid, erc20_address: transferFtFrom.ftid } });
+    // 验证逻辑
+    const argsReal = {
+      owner: transferFtFrom.ownerid,
+    }
+    if (transferFtFrom.ftid) {
+      argsReal.erc20_address = transferFtFrom.ftid;
+    }
+    const result = await wallet.callMethod({ contractId: CONTRACT, method: 'transfer_balances_from', args: argsReal });
     setTransferFtFromResult(result)
     setShowSpinner(false);
   };
@@ -159,6 +155,7 @@ export default function HelloNear() {
               className="form-control w-20"
               placeholder="testnetwork.testnet"
               onChange={t => setOwnerId(t.target.value)}
+              required
             />
 
             <div className="input-group-append full-width">

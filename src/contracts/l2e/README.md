@@ -9,6 +9,7 @@ Install [`cargo-near`](https://github.com/near/cargo-near) and run:
 ```bash
 RUSTFLAGS="-C link-arg=-s" rustup run stable cargo build --target wasm32-unknown-unknown --release
 cargo near build
+cargo build --all --target wasm32-unknown-unknown --release
 ```
 
 ## How to Test Locally?
@@ -52,3 +53,5 @@ https://testnet.nearblocks.io/zh-cn/address/testnetwork.testnet?tab=contract ini
 - [NEAR Discord](https://near.chat)
 - [NEAR Telegram Developers Community Group](https://t.me/neardev)
 - NEAR DevHub: [Telegram](https://t.me/neardevhub), [Twitter](https://twitter.com/neardevhub)
+
+仅支持owner一次approve一个spender，等待spender claim后，owner才能再次approve。

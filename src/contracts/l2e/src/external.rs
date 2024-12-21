@@ -1,9 +1,6 @@
 use near_sdk::{ext_contract, AccountId, Promise};
-use near_sdk::json_types::U128;
 use near_contract_standards::non_fungible_token::metadata::TokenMetadata;
 use near_contract_standards::non_fungible_token::TokenId;
-pub const NO_DEPOSIT: u128 = 0;
-pub const XCC_SUCCESS: u64 = 1;
 
 // Validator interface, for cross-contract calls
 #[ext_contract(ext_nft_contract)]

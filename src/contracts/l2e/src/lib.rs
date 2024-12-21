@@ -17,7 +17,7 @@ use near_contract_standards::non_fungible_token::metadata::TokenMetadata;
 use near_contract_standards::non_fungible_token::{Token, TokenId};
 use near_contract_standards::storage_management::StorageBalance;
 use near_contract_standards::non_fungible_token::core::ext_nft_core;
-use near_contract_standards::non_fungible_token::approval::ext_nft_approval;
+// use near_contract_standards::non_fungible_token::approval::ext_nft_approval;
 
 use near_contract_standards::fungible_token::core::ext_ft_core;
 
@@ -50,11 +50,15 @@ impl L2eTop {
     pub fn init(erc20: AccountId, erc721: AccountId) -> Self {
         let mut default_bal_map =
             IterableMap::<AccountId, Vector<(AccountId, NearToken, NearToken)>>::new(b"b");
-        default_bal_map.insert(env::predecessor_account_id(), Vector::new(b"v"));
+        let mut empty_bal_vec: Vector<(AccountId, NearToken, NearToken)> = Vector::new(b"v");
+        empty_bal_vec.push((env::predecessor_account_id(), NearToken::from_near(0), NearToken::from_near(0)));
+        default_bal_map.insert(env::predecessor_account_id(), empty_bal_vec);
         
         let mut default_nft_map =
             IterableMap::<AccountId, Vector<(AccountId, TokenId, bool)>>::new(b"n");
-        default_nft_map.insert(env::predecessor_account_id(), Vector::new(b"i"));
+        let mut empty_nft_vec: Vector<(AccountId, TokenId, bool)> = Vector::new(b"i");
+        empty_nft_vec.push((env::predecessor_account_id(), TokenId::from("0"), false));
+        default_nft_map.insert(env::predecessor_account_id(),empty_nft_vec);
 
         let mut erc20_address = Vector::new(b"2");
         erc20_address.push(erc20);
@@ -178,21 +182,21 @@ impl L2eTop {
         None
     }
 
-    pub fn get_all_owner_rewards_for_spender(&self) -> Option<Vec<(String, String, String)>> {
+    pub fn get_all_owner_rewards_for_spender(&self) -> Option<Vec<(String, u128, u128)>> {
         let spender = env::predecessor_account_id();
         let owner_bal_map = self.balances.get(&spender);
         if let Some(owner_bal_map) = owner_bal_map {
             let result_vecs: Vec<(
                 std::string::String,
-                std::string::String,
-                std::string::String,
+                std::primitive::u128,
+                std::primitive::u128,
             )> = owner_bal_map
                 .iter()
                 .map(|a_n_b| {
                     (
                         a_n_b.0.to_string(),
-                        a_n_b.1.to_string(),
-                        a_n_b.2.to_string(),
+                        a_n_b.1.as_near(),
+                        a_n_b.2.as_near(),
                     )
                 })
                 .collect();
@@ -270,7 +274,9 @@ impl L2eTop {
             log!("attached_amount cannot be less than main_token_amount.");
             return false;
         }
-
+        log!("attached_amount: {:?}",attached_amount);
+        log!("main_token_amount: {:?}",main_token_amount);
+        log!("ft_amount: {:?}",ft_amount);
         // Approve main token and ft token for spender
         // check if spender has balance
         if self.balances.contains_key(&spender) {
@@ -443,7 +449,6 @@ impl L2eTop {
     }
 
     /// First mint and approve nft for spender, Then call this method to claim nft.
-    #[payable]
     pub fn transfer_nft_from(&mut self, owner: AccountId, erc721_address: Option<AccountId>) -> bool {
         let spender = env::predecessor_account_id();
         let token_id = self
@@ -551,7 +556,6 @@ impl L2eTop {
 
     }
 
-    #[payable]
     pub fn transfer_balances_from(
         &mut self,
         owner: AccountId,
@@ -561,18 +565,17 @@ impl L2eTop {
         let spender = env::predecessor_account_id();
 
         // check nft authoriaztion
-        let nft_id_flag = self
+        let nft_id = self
             .nfts
             .get(&owner)
             .expect("No Approved nft found for owner")
             .iter()
-            .find(|x| x.0 == spender)
+            .find(|x| x.0 == spender && x.2)
             .expect("No claimed nft found for spender")
-            .2;
+            .1
+            .clone();
 
-        if !nft_id_flag {
-            return false;
-        }
+        log!("transfer_balances_from nft_id: {:#?}", nft_id);
         // transfer main token and ft token from owner to spender
         // for (k, v) in self.balances.iter(){
         //     log!("transfer_balances_from k: {:#?}", k);
@@ -627,6 +630,24 @@ impl L2eTop {
             Self::ext(env::current_account_id())
                 .ft_transfer_callback(),
         );
+
+        // Remove nft record from owner
+        let nfts: &mut Vector<(AccountId, String, bool)> =
+            self.nfts.get_mut(&owner).expect("No nft found for owner");
+        let index = nfts
+            .iter()
+            .position(|x: &(AccountId, String, bool)| x.0 == spender)
+            .unwrap();
+        nfts.swap_remove(index as u32);
+
+        // Remove main token record from spender
+        let balances: &mut Vector<(AccountId, NearToken, NearToken)> =
+            self.balances.get_mut(&spender).expect("No balance found for spender");
+        let index = balances
+            .iter()
+            .position(|x| x.0 == owner)
+            .unwrap();
+        balances.swap_remove(index as u32);
 
         let transfer_balances_from_log = EventLog {
             standard: CONSTRACT_NAME.to_string(),
@@ -689,7 +710,7 @@ impl L2eTop {
             }
 
             if !self.nfts.contains_key(&owner_address) {
-                self.nfts.insert(owner_address.clone(), Vector::new(b"b"));
+                self.nfts.insert(owner_address.clone(), Vector::new(b"n"));
             }
 
             log!("New auth_token_owner added: {}", owner_address.to_string());
@@ -738,6 +759,23 @@ impl L2eTop {
     }
 }
 
+use near_sdk::json_types::Base64VecU8;
+use near_sdk::serde::Deserialize;
+use near_sdk::serde_json;
+#[derive(Deserialize)]
+#[serde(crate = "near_sdk::serde")]
+struct Input {
+    keys: Vec<Base64VecU8>,
+}
+
+#[no_mangle]
+pub fn clean() {
+    let input = serde_json::from_slice::<Input>(&env::input().unwrap()).unwrap();
+    input.keys.iter().for_each(|key| {
+        env::storage_remove(&key.0);
+    })
+}
+
 /*
  * The rest of this file holds the inline tests for the code above
  * Learn more about Rust tests: https://doc.rust-lang.org/book/ch11-01-writing-tests.html
@@ -758,10 +796,10 @@ mod tests {
         assert_eq!(contract.get_greeting(), "Hello");
 
         assert!(contract.balances.len() == 1);
-        assert!(contract.balances.get(&env::predecessor_account_id()).unwrap().is_empty());
+        assert!(!contract.balances.get(&env::predecessor_account_id()).unwrap().is_empty());
 
         assert!(contract.nfts.len() == 1);
-        assert!(contract.nfts.get(&env::predecessor_account_id()).unwrap().is_empty());
+        assert!(!contract.nfts.get(&env::predecessor_account_id()).unwrap().is_empty());
 
 
         assert!(contract.erc20_address.len() == 1);
@@ -803,8 +841,8 @@ mod tests {
         assert_eq!(contract.get_admin_address(), vec![ env::predecessor_account_id().to_string(), "new_admin.near".to_owned()]);
         assert_eq!(contract.get_auth_token_owner(), vec![ env::predecessor_account_id().to_string(), "new_auth.near".to_owned()]);
 
-        assert_eq!(contract.get_all_spender_claim_for_owner(), Some(vec![]));
-        assert_eq!(contract.get_all_owner_rewards_for_spender(), Some(vec![]));
+        assert_eq!(contract.get_all_spender_claim_for_owner(), Some(vec![("bob.near".to_string(), "0".to_string(), false)]));
+        assert_eq!(contract.get_all_owner_rewards_for_spender(), Some(vec![("bob.near".to_string(), 0, 0)]));
         assert_eq!(contract.get_allowances_for_spender("owner.near".parse().unwrap()), Some((0,0)));
 
         assert_eq!(contract.balances.len(), 2);

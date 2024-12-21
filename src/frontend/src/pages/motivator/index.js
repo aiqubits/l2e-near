@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react';
-
-import { NearContext } from '@/wallets/near';
+import { utils  } from 'near-api-js';
+import { NearContext, THIRTY_TGAS  } from '@/wallets/near';
 import styles from '@/styles/app.module.css';
 import { HelloNearContract } from '../../config';
 import { Cards } from '@/components/cards';
@@ -26,7 +26,7 @@ export default function HelloNear() {
     nftid: '',
   });
   const approveForSpenderChange = (e) => {
-    e.preventDefault(); //禁用默认值
+    e.preventDefault(); //禁用刷新
     const { name, value } = e.target;
     setApproveForSpender((prevData) => ({
       ...prevData,
@@ -47,7 +47,12 @@ export default function HelloNear() {
 
   // 不使用useEffect，而使用手动点击按钮查询的方式
   const searchForMe = async () => {
+    // let all_spender_result = new Array();
     const all_spender_result = await wallet.callMethod({ contractId: CONTRACT, method: 'get_all_spender_claim_for_owner', args: {} });
+    console.log("++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+    console.log(all_spender_result);
+    // console.log(all_spender_result[0]);
+
     setAllSpenderClaim(all_spender_result);
   };
 
@@ -63,20 +68,39 @@ export default function HelloNear() {
     setShowSpinner(false);
   };
 
-  const approveForSpenderSubmit = async () => {
+  const approveForSpenderSubmit = async (e) => {
+    e.preventDefault(); //禁用默认刷新
+    console.log("+-=--------------------------------------------");
     setShowSpinner(true);
-    const result = await wallet.callMethod({ 
+    const argsReal = {
+      spender: approvedForSpender.spenderid, 
+      main_token_amount: utils.format.parseNearAmount(approvedForSpender.mainamount),
+      ft_amount: utils.format.parseNearAmount(approvedForSpender.ftamount),
+    };
+
+    if (approvedForSpender.tokenmetadata) {
+      argsReal.token_metadata = approvedForSpender.tokenmetadata;
+    }
+
+    if (approvedForSpender.ftid) {
+      argsReal.erc20_address = approvedForSpender.ftid;
+    }
+
+    if (approvedForSpender.nftid) {
+      argsReal.erc721_address = approvedForSpender.nftid;
+    }
+    console.log("++++++++++++++++++++++++argsReal.main_token_amount++++++++++++++++++++++++++++++++");
+    console.log(argsReal.main_token_amount);
+    console.log(argsReal);
+    const result = await wallet.callMethod({
       contractId: CONTRACT, 
       method: 'approve_for_spender', 
-      args: { 
-        spender: approvedForSpender.spenderid, 
-        main_token_amount: approvedForSpender.mainamount, 
-        ft_token_amount: approvedForSpender.ftamount, 
-        token_metadata: approvedForSpender.tokenmetadata, 
-        ft_token_id: approvedForSpender.ftid, 
-        nft_token_id: approvedForSpender.nftid 
-      } 
+      args: argsReal,
+      gas: 30000000000000*3,
+      deposit: argsReal.main_token_amount, // YoctoNear*3  10_u128.pow(24)
     });
+    console.log('-------------------------------result-----------------------------------');
+    console.log(result);
     setApproveForSpenderResult(result);
     setShowSpinner(false);
   };
@@ -119,7 +143,7 @@ export default function HelloNear() {
             <h1 className="w-100"><code>{approvedForSpenderResult}</code></h1>
           </div>
           <div className="input-group" hidden={!loggedIn}>
-            <form onSubmit={approveForSpenderSubmit}>
+            <form method="post" onSubmit={approveForSpenderSubmit}>
               <div>
                 <input
                   type="text"
@@ -127,6 +151,7 @@ export default function HelloNear() {
                   name="spenderid"
                   className="form-control w-20"
                   placeholder="Spender Account ID"
+                  value={approvedForSpender.spenderid}
                   onChange={approveForSpenderChange}
                   required
                 />
@@ -139,6 +164,7 @@ export default function HelloNear() {
                   name="mainamount"
                   className="form-control w-20"
                   placeholder="Main Token Amount"
+                  value={approvedForSpender.mainamount}
                   onChange={approveForSpenderChange}
                   required
                 />
@@ -151,6 +177,7 @@ export default function HelloNear() {
                   name="ftamount"
                   className="form-control w-20"
                   placeholder="FT Amount"
+                  value={approvedForSpender.ftamount}
                   onChange={approveForSpenderChange}
                   required
                 />
@@ -162,7 +189,8 @@ export default function HelloNear() {
                   id="tokenmetadata"
                   name="tokenmetadata"
                   className="form-control w-20"
-                  placeholder="Main Token Amount"
+                  placeholder="Token Metadata"
+                  value={approvedForSpender.tokenmetadata}
                   onChange={approveForSpenderChange}
                 />
               </div>
@@ -174,6 +202,7 @@ export default function HelloNear() {
                   name="ftid"
                   className="form-control w-20"
                   placeholder="FT Address"
+                  value={approvedForSpender.ftid}
                   onChange={approveForSpenderChange}
                 />
               </div>
@@ -185,6 +214,7 @@ export default function HelloNear() {
                   name="nftid"
                   className="form-control w-20"
                   placeholder="NFT Address"
+                  value={approvedForSpender.nftid}
                   onChange={approveForSpenderChange}
                 />
               </div>

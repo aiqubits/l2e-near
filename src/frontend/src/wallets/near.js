@@ -1,7 +1,7 @@
 import { createContext } from 'react';
 
 // near api js
-import { providers, utils } from 'near-api-js';
+import { providers, utils  } from 'near-api-js';
 
 // wallet selector
 import '@near-wallet-selector/modal-ui/styles.css';

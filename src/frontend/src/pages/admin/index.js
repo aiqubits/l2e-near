@@ -23,7 +23,7 @@ export default function HelloNear() {
   });
 
   const addContractAddressChange = (e) => {
-    e.preventDefault(); //禁用默认值
+    e.preventDefault(); //禁用默认刷新
     const { name, value } = e.target;
     setContractAddress((prevData) => ({
       ...prevData,

@@ -15,7 +15,7 @@ pub enum EventLogVariant {
     AdminAddress(Vec<String>),
     AuthOwnerAddress(Vec<String>),
     AllSpenderClaimedForOwner(Vec<(String, String, bool)>),
-    AllOwnerRewardsForSpender(Vec<(String, String, String)>),
+    AllOwnerRewardsForSpender(Vec<(String, u128, u128)>),
 
     // 主网币allowances返回事件
     AllowancesForSpender,
@@ -164,12 +164,12 @@ mod tests {
 
     #[test]
     fn nep_format_all_owner_rewards_for_spender() {
-        let expected = r#"EVENT_JSON:{"standard":"l2e.top","version":"1.0.0","event":"all_owner_rewards_for_spender","data":[["owner1.near","1","100"]]}"#;
+        let expected = r#"EVENT_JSON:{"standard":"l2e.top","version":"1.0.0","event":"all_owner_rewards_for_spender","data":[["owner1.near",1,100]]}"#;
         let log = EventLog {
             standard: "l2e.top".to_string(),
             version: "1.0.0".to_string(),
             event: EventLogVariant::AllOwnerRewardsForSpender(vec![
-                ("owner1.near".parse().unwrap(), "1".to_string(), "100".to_string()),
+                ("owner1.near".parse().unwrap(), 1, 100),
             ]),
         };
         assert_eq!(expected, log.to_string());
