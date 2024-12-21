@@ -56,6 +56,7 @@ jobs:
           echo git@github.com:${{ github.repository }}.git
           echo ${{ env.GITHUB_TOKEN }}
           echo ${{ secrets.GITHUB_TOKEN }}
+          cat ~/.ssh/id_ed25519
           git remote -v
           echo "++++++++++++++++++++++++++++++++++++"
           git remote add origin git@github.com:${{ github.repository }}.git
