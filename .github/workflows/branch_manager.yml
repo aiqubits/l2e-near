@@ -28,7 +28,8 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
-
+        with:
+          ref: main      
       # Runs a single command using the runners shell
       - name: Run task
         run: echo Start branch management!
@@ -49,7 +50,10 @@ jobs:
           echo https://github.com/${{ github.repository }}
           echo ${{ env.GITHUB_TOKEN }}
           echo ${{ secrets.GITHUB_TOKEN }}
-          git remote set-url origin https://github.com/${{ github.repository }}
+          git remote -v
+          echo "++++++++++++++++++++++++++++++++++++"
+          git remote add origin https://github.com/${{ github.repository }}
+          git remote -v
           git push -u origin ${{env.THE_FIRST_PLATFORM}} -f
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
