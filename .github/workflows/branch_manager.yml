@@ -54,7 +54,8 @@ jobs:
           echo "++++++++++++++++++++++++++++++++++++"
           git remote add origin https://github.com/${{ github.repository }}
           git remote -v
-          git push -u origin ${{env.THE_FIRST_PLATFORM}} -f
+          git branch -a
+          git push origin ${{env.THE_FIRST_PLATFORM}}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
