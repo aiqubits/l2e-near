@@ -39,16 +39,16 @@ jobs:
           git config --global user.name "aiqubit"
           git config --global user.email "aiqubit@hotmail.com"
 
-      - name: Create ${{THE_FIRST_PLATFORM}} branch
+      - name: Create ${{env.THE_FIRST_PLATFORM}} branch
         run: |
-          cd src/${{THE_FIRST_PLATFORM}}
+          cd src/${{env.THE_FIRST_PLATFORM}}
           git init
           git add .
-          git commit -m "Initial commit from ${{THE_FIRST_PLATFORM}}"
-          git checkout -b ${{THE_FIRST_PLATFORM}}
+          git commit -m "Initial commit from ${{env.THE_FIRST_PLATFORM}}"
+          git checkout -b ${{env.THE_FIRST_PLATFORM}}
           git remote add origin https://github.com/${{ github.repository }}.git
-          git push -u origin ${{THE_FIRST_PLATFORM}} -f
+          git push -u origin ${{env.THE_FIRST_PLATFORM}} -f
     
-      - name: Create ${{THE_SECOND_PLATFORM}} branch
+      - name: Create ${{env.THE_SECOND_PLATFORM}} branch
         run: |
           echo todo!         
