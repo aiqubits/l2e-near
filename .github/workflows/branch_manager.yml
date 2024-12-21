@@ -48,7 +48,9 @@ jobs:
           git checkout -b ${{env.THE_FIRST_PLATFORM}}
           git remote add origin https://github.com/${{ github.repository }}.git
           git push -u origin ${{env.THE_FIRST_PLATFORM}} -f
-    
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Create ${{env.THE_SECOND_PLATFORM}} branch
         run: |
           echo todo!         
